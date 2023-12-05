@@ -14,7 +14,8 @@ stop() {
 }
 
 restart() {
-        echo "Restarting ttyd
-        stop()
-        start()
+        echo "Restarting ttyd"
+        stop
+        start
+	return 0
 }
