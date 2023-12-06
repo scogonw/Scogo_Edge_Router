@@ -1,21 +1,27 @@
-#!/bin/sh /etc/rc.common
- 
+#!/bin/sh
+
 START=10
 STOP=15
- 
-start() {        
+
+start() {
         echo "Starting TinyProxy"
-        /usr/bin/tinyproxy -d -c /var/etc/tinyproxy.conf &
-}                 
- 
-stop() {          
+        touch /var/log/tinyproxy.log
+	chown nobody:nogroup /var/log/tinyproxy.log
+        /usr/bin/tinyproxy -d -c /etc/config/tinyproxy.conf &
+}
+
+stop() {
         echo "Stopping TinyProxy"
-        killall tinyproxy 
+        killall tinyproxy
 }
 
 restart() {
         echo "Restarting TinyProxy"
         stop
         start
-	      return 0
+	return 0
 }
+
+touch /var/log/tinyproxy.log
+chown nobody:nogroup /var/log/tinyproxy.log
+/usr/bin/tinyproxy -d -c /etc/config/tinyproxy.conf &
