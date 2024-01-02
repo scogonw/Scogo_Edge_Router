@@ -3,11 +3,11 @@ config globals 'globals'
 	option packet_steering '1'
 
 config device
-	option name 'lan1'
+	option name 'wan1'
 	option ipv6 '0'
 
 config device
-	option name 'lan2'
+	option name 'wan2'
 	option ipv6 '0'
 
 config device
@@ -54,7 +54,7 @@ config interface 'lan'
 	option metric '1'
 
 config interface 'wan1'
-	option device 'lan1'
+	option device 'wan1'
 	option proto 'dhcp'
 	option peerdns '0'
 	option ipv6 '0'
@@ -63,7 +63,7 @@ config interface 'wan1'
 	option metric '10'
 
 config interface 'wan2'
-	option device 'lan2'
+	option device 'wan2'
 	option proto 'dhcp'
 	option peerdns '0'
 	option ipv6 '0'
