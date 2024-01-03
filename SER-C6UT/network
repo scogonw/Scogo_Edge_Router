@@ -23,11 +23,7 @@ config device
 	option ipv6 '0'
 
 config device
-	option name 'phy0-ap0'
-	option ipv6 '0'
-
-config device
-	option name 'phy1-ap0'
+	option name 'wlan0'
 	option ipv6 '0'
 
 config device

@@ -1,0 +1,76 @@
+config globals 'globals'
+	option ula_prefix 'fdbf:6827:f158::/48'
+	option packet_steering '1'
+
+config device
+	option name 'lan1'
+	option ipv6 '0'
+
+config device
+	option name 'lan2'
+	option ipv6 '0'
+
+config device
+	option name 'lan3'
+	option ipv6 '0'
+
+config device
+	option name 'lan4'
+	option ipv6 '0'
+
+config device
+	option name 'wan'
+	option ipv6 '0'
+
+config device
+	option name 'wlan0'
+	option ipv6 '0'
+
+config device
+	option name 'wlan1'
+	option ipv6 '0'
+
+config device
+	option name 'br-lan'
+	option type 'bridge'
+	list ports 'lan3'
+	list ports 'lan4'
+	option ipv6 '0'
+
+config interface 'loopback'
+	option device 'lo'
+	option proto 'static'
+	option ipaddr '127.0.0.1'
+	option netmask '255.0.0.0'
+    option ipv6 '0'
+
+config interface 'lan'
+	option device 'br-lan'
+	option proto 'static'
+	option ipaddr '192.168.1.1'
+	option netmask '255.255.255.0'
+	option ip6assign '60'
+	option ipv6 '0'
+	option metric '1'
+
+config interface 'wan1'
+	option device 'lan1'
+	option proto 'dhcp'
+	option peerdns '0'
+	option ipv6 '0'
+	list dns '8.8.8.8'
+	list dns '8.8.4.4'
+	option metric '10'
+
+config interface 'wan2'
+	option device 'lan2'
+	option proto 'dhcp'
+	option peerdns '0'
+	option ipv6 '0'
+	list dns '8.8.8.8'
+	list dns '8.8.4.4'
+	option metric '20'
+
+config interface 'wan'
+	option device 'wan'
+	option proto 'dhcp'
