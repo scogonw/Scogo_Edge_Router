@@ -7,10 +7,18 @@ config device
 	option asset_categeory 'Hardware'
 	option license_key 'F5271B10-37F0-4499-B64D-58D4EEACEDAE'
 
+config notification
+    option admin_notification_topic 'SER-EEACEDE465F-ADMIN'
+    option all_notification_topic 'SER-EEACEDE465F-ALL'
+    option link_down_notification_workflow 'ser_link_down'
+    option link_up_notification_workflow 'ser_link_up'
+    option device_power_down_notification_workflow 'ser_device_power_down'
+    option generic_workflow 'generic_workflow'
+
 config manufacturer
 	option make 'Netgear'
 	option model 'R7000P'
-	option serial_number 'R7000P'
+	option serial_number '5J62947XA0B1B'
 
 config site
 	option customer_name 'spectra'
