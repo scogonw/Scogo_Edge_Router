@@ -1,4 +1,17 @@
-config scogo
+config device
 	option hostname 'MUMBAI-SER-C6UT-DE465F'
-	option sku 'SCOGO SER-200'
-	option make 'Netgear R7000'
+	option sku 'SER-R7000PN'
+	option asset_number 'xxxx'
+	option asset_type 'Edge Router'
+	option asset_categeory 'Hardware'
+	option serial_number 'xxxxx'
+	option license_key 'xxxxx'
+
+config manufacturer
+	option make 'Netgear'
+	option model 'R7000P'
+
+config site
+	option customer_name 'shoppers stop'
+	option end_customer_name 'shoppers stop'
+	option hw_installation_address 'shoppers stop'
