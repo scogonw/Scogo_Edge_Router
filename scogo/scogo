@@ -1,0 +1,4 @@
+config scogo
+	option hostname 'MUMBAI-SER-C6UT-DE465F'
+	option sku 'SCOGO SER-200'
+	option make 'Netgear R7000'
