@@ -1,17 +1,21 @@
 config device
-	option hostname 'MUMBAI-SER-C6UT-DE465F'
-	option sku 'SER-R7000PN'
-	option asset_number 'xxxx'
+	option hostname 'SER-8C0F03EE'
+	option make 'Scogo'
+	option model 'SER-R7000PN'
+	option asset_number 'EEACEDE465F'
 	option asset_type 'Edge Router'
 	option asset_categeory 'Hardware'
-	option serial_number 'xxxxx'
-	option license_key 'xxxxx'
+	option license_key 'F5271B10-37F0-4499-B64D-58D4EEACEDAE'
 
 config manufacturer
 	option make 'Netgear'
 	option model 'R7000P'
+	option serial_number 'R7000P'
 
 config site
-	option customer_name 'shoppers stop'
+	option customer_name 'spectra'
 	option end_customer_name 'shoppers stop'
-	option hw_installation_address 'shoppers stop'
+	option hw_installation_address 'shoppers stop shop-5 inorbit mall malad west mumbai 462003'
+	option spoc_name 'Karan Singh'
+	option spoc_contact_number '+91-9910548139'
+	option spoc_email_address 'karan@scogo.in'
