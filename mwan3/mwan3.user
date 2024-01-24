@@ -1,0 +1,147 @@
+#!/bin/sh
+#
+# This file is interpreted as shell script.
+# Put your custom mwan3 action here, they will
+# be executed with each netifd hotplug interface event
+# on interfaces for which mwan3 is enabled.
+#
+# There are three main environment variables that are passed to this script.
+#
+# $ACTION
+#      <ifup>         Is called by netifd and mwan3track.
+#      <ifdown>       Is called by netifd and mwan3track.
+#      <connected>    Is only called by mwan3track if tracking was successful.
+#      <disconnected> Is only called by mwan3track if tracking has failed.
+# $INTERFACE	Name of the interface an action relates to (e.g. "wan" or "wwan").
+# $DEVICE	Physical device name of the interface the action relates to (e.g. "eth0" or "wwan0").
+#               Note: On an ifdown event, $DEVICE is not available, use $INTERFACE instead.
+#
+# Further documentation can be found here:
+# https://openwrt.org/docs/guide-user/network/wan/multiwan/mwan3#alertsnotifications
+#!/bin/bash
+# This script is used to send notifications to the user when link is down.
+# It uses openwrt MWAN3 package to check the status of the link and send the notification.
+
+#set -x
+
+# ACTION=$1
+# INTERFACE=$2
+# INTERFACE_IDENTIFIER=$(echo $INTERFACE | sed s/lan/wan/g)
+# DEVICE=$3
+
+# create a log file
+touch /var/log/linkstatus.log
+
+DEVICE_HOSTNAME=$(uci show scogo.@device[0].hostname | cut -d '=' -f 2 | sed "s/'//g")
+DEVICE_MODEL=$(uci show scogo.@device[0].model | cut -d '=' -f 2 | sed "s/'//g")
+DEVICE_ASSET_NUMBER=$(uci show scogo.@device[0].asset_number | cut -d '=' -f 2 | sed "s/'//g")
+
+ADMIN_NOTIFICATION_TOPIC=$(uci show scogo.@notification[0].admin_notification_topic | cut -d '=' -f 2 | sed "s/'//g")
+ALL_NOTIFICATION_TOPIC=$(uci show scogo.@notification[0].all_notification_topic | cut -d '=' -f 2 | sed "s/'//g")
+LINK_DOWN_NOTIFICATION_WORKFLOW=$(uci show scogo.@notification[0].link_down_notification_workflow | cut -d '=' -f 2 | sed "s/'//g")
+LINK_UP_NOTIFICATION_WORKFLOW=$(uci show scogo.@notification[0].link_up_notification_workflow | cut -d '=' -f 2 | sed "s/'//g")
+DEVICE_POWER_DOWN_NOTIFICATION_WORKFLOW=$(uci show scogo.@notification[0].device_power_down_notification_workflow | cut -d '=' -f 2 | sed "s/'//g")
+GENERIC_WORKFLOW=$(uci show scogo.@notification[0].generic_workflow | cut -d '=' -f 2 | sed "s/'//g")
+
+SITE_CUSTOMER_NAME=$(uci show scogo.@site[0].customer_name | cut -d '=' -f 2 | sed "s/'//g")
+SITE_END_CUSTOMER_NAME=$(uci show scogo.@site[0].end_customer_name | cut -d '=' -f 2 | sed "s/'//g")
+SITE_HW_INSTALLATION_ADDRESS=$(uci show scogo.@site[0].hw_installation_address | cut -d '=' -f 2 | sed "s/'//g")
+SITE_SPOC_NAME=$(uci show scogo.@site[0].spoc_name | cut -d '=' -f 2 | sed "s/'//g")
+SITE_SPOC_CONTACT_NUMBER=$(uci show scogo.@site[0].spoc_contact_number | cut -d '=' -f 2 | sed "s/'//g")
+SITE_SPOC_EMAIL_ADDRESS=$(uci show scogo.@site[0].spoc_email_address | cut -d '=' -f 2 | sed "s/'//g")
+
+## Uncomment the below lines for testing
+# DEVICE_HOSTNAME=SER-8C0F03EE
+# DEVICE_MODEL=SER-R7000PN
+# DEVICE_ASSET_NUMBER=EEACEDE465F
+
+# ADMIN_NOTIFICATION_TOPIC=SER-EEACEDE465F-ADMIN
+# ALL_NOTIFICATION_TOPIC=SER-EEACEDE465F-ALL
+# LINK_DOWN_NOTIFICATION_WORKFLOW=ser_link_down
+# LINK_UP_NOTIFICATION_WORKFLOW=ser_link_up
+# DEVICE_POWER_DOWN_NOTIFICATION_WORKFLOW=ser_device_power_down
+# GENERIC_WORKFLOW=generic_workflow
+
+# SITE_CUSTOMER_NAME=spectra
+# SITE_END_CUSTOMER_NAME=shoppers_stop
+# SITE_HW_INSTALLATION_ADDRESS="shoppers stop shop-5 inorbit mall malad west mumbai 462003"
+# SITE_SPOC_NAME="karan singh"
+# SITE_SPOC_CONTACT_NUMBER="9999999999"
+# SITE_SPOC_EMAIL_ADDRESS="test@scogo.in"
+
+# ACTION=$1
+# INTERFACE=$2
+
+PAYLOAD=$(cat <<-END
+    {
+    "name": "$(echo $LINK_DOWN_NOTIFICATION_WORKFLOW)",
+    "to": {
+        "topicKey": "$(echo $ALL_NOTIFICATION_TOPIC)",
+        "type": "Topic"
+    },
+    "payload": {
+            "DEVICE_DETAILS": {
+                "DEVICE_HOSTNAME": "$(echo $DEVICE_HOSTNAME)",
+                "DEVICE_MODEL": "$(echo $DEVICE_MODEL)",
+                "DEVICE_ASSET_NUMBER": "$(echo $DEVICE_ASSET_NUMBER)"
+            },
+            "SITE_DETAILS": {
+                "CUSTOMER_NAME": "$(echo $SITE_CUSTOMER_NAME)",
+                "END_CUSTOMER_NAME": "$(echo $SITE_END_CUSTOMER_NAME)",
+                "DEVICE_INSTALLATION_ADDRESS": "$(echo $SITE_HW_INSTALLATION_ADDRESS)",
+                "SITE_SPOC": "$(echo $SITE_SPOC_NAME)",
+                "SITE_SPOC_CONTACT_NUMBER": "$(echo $SITE_SPOC_CONTACT_NUMBER)",
+                "SITE_SPOC_EMAIL_ADDRESS": "$(echo $SITE_SPOC_EMAIL_ADDRESS)"
+            },
+            "INTERFACE_DETAILS": {
+                "NETWORK_INTERFACE_NAME": "$(echo $INTERFACE)",
+                "NETWORK_PORT_IDENTIFIER": "$(echo $DEVICE)"
+            }
+    }
+}
+END
+)
+
+if [ "${ACTION}" = "ifdown" ] ; then
+    LINK_STATUS="DOWN"
+    if [ "${INTERFACE}" == "wan1" ] || [ "${INTERFACE}" == "wan2" ] ; then
+        # check if the interface name has lan in it, if yes then change the interface value to WAN
+        # INTERFACE=$(echo $INTERFACE | sed s/lan/wan/g)
+        curl --location 'https://notification-api.development.scogo.in/v1/events/trigger' \
+        --header 'Authorization: ApiKey 0e780fe3455ea2e1f3dfb29299001034' \
+        --header 'Content-Type: application/json' \
+        --data "${PAYLOAD}" >> /var/log/linkstatus.log
+        # if curl command is successfull then print success on the console as well as in the log file /var/log/linkstatus.log, else print failure on console as well as in the log file /var/log/linkstatus.log
+        # The format of the log file is as follows:
+        # <TimeStamp> <interface> is <LINK_STATUS> ,notification email has been sent or not.
+        if [ $? -eq 0 ] ; then
+            echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,notification email has been sent." >> /var/log/linkstatus.log
+            echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,notification email has been sent."
+        else
+            echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,error while sending notification email." >> /var/log/linkstatus.log
+            echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,error while sending notification email."
+        fi
+    fi
+fi
+
+if [ "${ACTION}" = "ifup" ] ; then
+    LINK_STATUS="UP"
+    if [ "${INTERFACE}" == "wan1" ] || [ "${INTERFACE}" == "wan2" ] ; then
+        # check if the interface name has lan in it, if yes then change the interface value to WAN
+        # INTERFACE=$(echo $INTERFACE | sed s/lan/wan/g)
+        curl --location 'https://notification-api.development.scogo.in/v1/events/trigger' \
+        --header 'Authorization: ApiKey 0e780fe3455ea2e1f3dfb29299001034' \
+        --header 'Content-Type: application/json' \
+        --data "${PAYLOAD}" >> /var/log/linkstatus.log
+        # if curl command is successfull then print success on the console as well as in the log file /var/log/linkstatus.log, else print failure on console as well as in the log file /var/log/linkstatus.log
+        # The format of the log file is as follows:
+        # <TimeStamp> <interface> is <LINK_STATUS> ,notification email has been sent or not.
+        if [ $? -eq 0 ] ; then
+            echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,notification email has been sent." >> /var/log/linkstatus.log
+            echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,notification email has been sent."
+        else
+            echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,error while sending notification email." >> /var/log/linkstatus.log
+            echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,error while sending notification email."
+        fi
+    fi
+fi
