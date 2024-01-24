@@ -28,16 +28,18 @@ config site
 	option spoc_contact_number '+91-9910548139'
 	option spoc_email_address 'karan@scogo.in'
 
-config connectivity
-	option ISP1 'Tata Play Fiber'
-	option ISP1_NIC 'LAN1'
-	option ISP1_INTERFACE 'WAN1'
-	option ISP1_SPOC_NAME 'Surya Prakash'
-	option ISP1_SPOC_CONTACT_NUMBER '+91-9910548132'
-	option ISP1_SPOC_EMAIL_ADDRESS 'Surya@tataplayfibre.com'
-	option ISP2 'Airtel'
-	option ISP2_NIC 'LAN2'
-	option ISP2_INTERFACE 'WAN2'
-	option ISP2_SPOC_NAME 'Chandra Prakash'
-	option ISP2_SPOC_CONTACT_NUMBER '+91-9320548132'
-	option ISP2_SPOC_EMAIL_ADDRESS 'chandra@airtel.com'
+config ISP1
+	option name 'Tata Play Fiber'
+	option nic 'LAN1'
+	option interface 'WAN1'
+	option contact_person 'Surya Prakash'
+	option contact_number '+91-9910548132'
+	option contact_email 'Surya@tataplayfibre.com'
+
+config ISP2
+	option name 'Airtel'
+	option nic 'LAN2'
+	option interface 'WAN2'
+	option contact_person 'Chandra Prakash'
+	option contact_number '+91-99330548132'
+	option contact_email 'chandra@airtel.com'
