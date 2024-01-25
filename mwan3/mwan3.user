@@ -32,8 +32,9 @@
 # create a log file
 touch /var/log/linkstatus.log
 
-NOTIFICATION_ENDPOINT="https://notification-api.development.scogo.in/v1/events/trigger"
-API_KEY="ApiKey 0e780fe3455ea2e1f3dfb29299001034"
+# Make sure Notification endpoint and API key are configured in the UCI manually
+NOTIFICATION_ENDPOINT="$(uci show scogo.@notification[0].notification_endpoint | cut -d '=' -f 2 | sed "s/'//g")"
+NOTIFICATION_API_KEY="$(uci show scogo.@notification[0].notification_api_key | cut -d '=' -f 2 | sed "s/'//g")"
 
 DEVICE_HOSTNAME=$(uci show scogo.@device[0].hostname | cut -d '=' -f 2 | sed "s/'//g")
 DEVICE_MODEL=$(uci show scogo.@device[0].model | cut -d '=' -f 2 | sed "s/'//g")
@@ -132,7 +133,7 @@ if [ "${ACTION}" = "ifdown" ] ; then
         # INTERFACE=$(echo $INTERFACE | sed s/lan/wan/g)
         echo $link_down_request_body >> /var/log/linkstatus.log
         curl --location "${NOTIFICATION_ENDPOINT}" \
-        --header "Authorization: ${API_KEY}" \
+        --header "Authorization: ${NOTIFICATION_API_KEY}" \
         --header 'Content-Type: application/json' \
         --data "${link_down_request_body}" >> /var/log/linkstatus.log
         # if curl command is successfull then print success on the console as well as in the log file /var/log/linkstatus.log, else print failure on console as well as in the log file /var/log/linkstatus.log
@@ -153,7 +154,7 @@ if [ "${ACTION}" = "ifup" ] ; then
         # INTERFACE=$(echo $INTERFACE | sed s/lan/wan/g)
         echo $link_up_request_body >> /var/log/linkstatus.log
         curl --location "${NOTIFICATION_ENDPOINT}" \
-        --header "Authorization: ${API_KEY}" \
+        --header "Authorization: ${NOTIFICATION_API_KEY}" \
         --header 'Content-Type: application/json' \
         --data "${link_up_request_body}" >> /var/log/linkstatus.log
         # if curl command is successfull then print success on the console as well as in the log file /var/log/linkstatus.log, else print failure on console as well as in the log file /var/log/linkstatus.log
