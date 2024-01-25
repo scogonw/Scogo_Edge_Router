@@ -32,6 +32,9 @@
 # create a log file
 touch /var/log/linkstatus.log
 
+NOTIFICATION_ENDPOINT="https://notification-api.development.scogo.in/v1/events/trigger"
+API_KEY="ApiKey 0e780fe3455ea2e1f3dfb29299001034"
+
 DEVICE_HOSTNAME=$(uci show scogo.@device[0].hostname | cut -d '=' -f 2 | sed "s/'//g")
 DEVICE_MODEL=$(uci show scogo.@device[0].model | cut -d '=' -f 2 | sed "s/'//g")
 DEVICE_ASSET_NUMBER=$(uci show scogo.@device[0].asset_number | cut -d '=' -f 2 | sed "s/'//g")
@@ -73,53 +76,72 @@ SITE_SPOC_EMAIL_ADDRESS=$(uci show scogo.@site[0].spoc_email_address | cut -d '=
 # INTERFACE=$2
 
 PAYLOAD=$(cat <<-END
-    {
+{
+    "DEVICE_DETAILS": {
+        "DEVICE_HOSTNAME": "$(echo $DEVICE_HOSTNAME)",
+        "DEVICE_MODEL": "$(echo $DEVICE_MODEL)",
+        "DEVICE_ASSET_NUMBER": "$(echo $DEVICE_ASSET_NUMBER)",
+        "NETWORK_INTERFACE_NAME": "$(echo $INTERFACE)"
+    },
+    "SITE_DETAILS": {
+        "CUSTOMER_NAME": "$(echo $SITE_CUSTOMER_NAME)",
+        "END_CUSTOMER_NAME": "$(echo $SITE_END_CUSTOMER_NAME)",
+        "DEVICE_INSTALLATION_ADDRESS": "$(echo $SITE_HW_INSTALLATION_ADDRESS)",
+        "SITE_SPOC": "$(echo $SITE_SPOC_NAME)",
+        "SITE_SPOC_CONTACT_NUMBER": "$(echo $SITE_SPOC_CONTACT_NUMBER)",
+        "SITE_SPOC_EMAIL_ADDRESS": "$(echo $SITE_SPOC_EMAIL_ADDRESS)"
+    }
+}
+END
+)
+
+link_down_request_initials=$(cat <<-END
+{
     "name": "$(echo $LINK_DOWN_NOTIFICATION_WORKFLOW)",
     "to": {
         "topicKey": "$(echo $ALL_NOTIFICATION_TOPIC)",
         "type": "Topic"
     },
-    "payload": {
-            "DEVICE_DETAILS": {
-                "DEVICE_HOSTNAME": "$(echo $DEVICE_HOSTNAME)",
-                "DEVICE_MODEL": "$(echo $DEVICE_MODEL)",
-                "DEVICE_ASSET_NUMBER": "$(echo $DEVICE_ASSET_NUMBER)"
-            },
-            "SITE_DETAILS": {
-                "CUSTOMER_NAME": "$(echo $SITE_CUSTOMER_NAME)",
-                "END_CUSTOMER_NAME": "$(echo $SITE_END_CUSTOMER_NAME)",
-                "DEVICE_INSTALLATION_ADDRESS": "$(echo $SITE_HW_INSTALLATION_ADDRESS)",
-                "SITE_SPOC": "$(echo $SITE_SPOC_NAME)",
-                "SITE_SPOC_CONTACT_NUMBER": "$(echo $SITE_SPOC_CONTACT_NUMBER)",
-                "SITE_SPOC_EMAIL_ADDRESS": "$(echo $SITE_SPOC_EMAIL_ADDRESS)"
-            },
-            "INTERFACE_DETAILS": {
-                "NETWORK_INTERFACE_NAME": "$(echo $INTERFACE)",
-                "NETWORK_PORT_IDENTIFIER": "$(echo $DEVICE)"
-            }
-    }
-}
+    "payload":
 END
 )
+
+link_down_request_body="${link_down_request_initials} ${PAYLOAD}}"
+
+link_up_request_initials=$(cat <<-END
+{
+    "name": "$(echo $LINK_UP_NOTIFICATION_WORKFLOW)",
+    "to": {
+        "topicKey": "$(echo $ALL_NOTIFICATION_TOPIC)",
+        "type": "Topic"
+    },
+    "payload":
+END
+)
+
+link_up_request_body="${link_up_request_initials} ${PAYLOAD}}"
+
+# echo $link_down_request_body >> /var/log/linkstatus.log
+# echo $link_up_request_body >> /var/log/linkstatus.log
+
 
 if [ "${ACTION}" = "ifdown" ] ; then
     LINK_STATUS="DOWN"
     if [ "${INTERFACE}" == "wan1" ] || [ "${INTERFACE}" == "wan2" ] ; then
         # check if the interface name has lan in it, if yes then change the interface value to WAN
         # INTERFACE=$(echo $INTERFACE | sed s/lan/wan/g)
-        curl --location 'https://notification-api.development.scogo.in/v1/events/trigger' \
-        --header 'Authorization: ApiKey 0e780fe3455ea2e1f3dfb29299001034' \
+        echo $link_down_request_body >> /var/log/linkstatus.log
+        curl --location "${NOTIFICATION_ENDPOINT}" \
+        --header "Authorization: ${API_KEY}" \
         --header 'Content-Type: application/json' \
-        --data "${PAYLOAD}" >> /var/log/linkstatus.log
+        --data "${link_down_request_body}" >> /var/log/linkstatus.log
         # if curl command is successfull then print success on the console as well as in the log file /var/log/linkstatus.log, else print failure on console as well as in the log file /var/log/linkstatus.log
         # The format of the log file is as follows:
         # <TimeStamp> <interface> is <LINK_STATUS> ,notification email has been sent or not.
         if [ $? -eq 0 ] ; then
             echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,notification email has been sent." >> /var/log/linkstatus.log
-            echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,notification email has been sent."
         else
             echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,error while sending notification email." >> /var/log/linkstatus.log
-            echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,error while sending notification email."
         fi
     fi
 fi
@@ -129,19 +151,18 @@ if [ "${ACTION}" = "ifup" ] ; then
     if [ "${INTERFACE}" == "wan1" ] || [ "${INTERFACE}" == "wan2" ] ; then
         # check if the interface name has lan in it, if yes then change the interface value to WAN
         # INTERFACE=$(echo $INTERFACE | sed s/lan/wan/g)
-        curl --location 'https://notification-api.development.scogo.in/v1/events/trigger' \
-        --header 'Authorization: ApiKey 0e780fe3455ea2e1f3dfb29299001034' \
+        echo $link_up_request_body >> /var/log/linkstatus.log
+        curl --location "${NOTIFICATION_ENDPOINT}" \
+        --header "Authorization: ${API_KEY}" \
         --header 'Content-Type: application/json' \
-        --data "${PAYLOAD}" >> /var/log/linkstatus.log
+        --data "${link_up_request_body}" >> /var/log/linkstatus.log
         # if curl command is successfull then print success on the console as well as in the log file /var/log/linkstatus.log, else print failure on console as well as in the log file /var/log/linkstatus.log
         # The format of the log file is as follows:
         # <TimeStamp> <interface> is <LINK_STATUS> ,notification email has been sent or not.
         if [ $? -eq 0 ] ; then
             echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,notification email has been sent." >> /var/log/linkstatus.log
-            echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,notification email has been sent."
         else
             echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,error while sending notification email." >> /var/log/linkstatus.log
-            echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,error while sending notification email."
         fi
     fi
 fi
