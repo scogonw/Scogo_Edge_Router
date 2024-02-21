@@ -1,0 +1,23 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../keedebaji"
+		},
+		{
+			"path": "../infra"
+		},
+		{
+			"path": "../documentation"
+		},
+		{
+			"path": "../../llm-experiments"
+		},
+		{
+			"path": "../../../../Downloads/JSON_Converter"
+		}
+	],
+	"settings": {}
+}
