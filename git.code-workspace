@@ -13,10 +13,16 @@
 			"path": "../documentation"
 		},
 		{
-			"path": "../../llm-experiments"
+			"path": "../../../../Downloads/JSON_Converter"
 		},
 		{
-			"path": "../../../../Downloads/JSON_Converter"
+			"path": "../llm-experiments"
+		},
+		{
+			"path": "../rathole"
+		},
+		{
+			"path": "../ttyd"
 		}
 	],
 	"settings": {}

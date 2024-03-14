@@ -38,7 +38,7 @@ NOTIFICATION_API_KEY="$(uci show scogo.@notification[0].notification_api_key | c
 
 DEVICE_HOSTNAME=$(uci show scogo.@device[0].hostname | cut -d '=' -f 2 | sed "s/'//g")
 DEVICE_MODEL=$(uci show scogo.@device[0].model | cut -d '=' -f 2 | sed "s/'//g")
-DEVICE_ASSET_NUMBER=$(uci show scogo.@device[0].asset_number | cut -d '=' -f 2 | sed "s/'//g")
+DEVICE_ASSET_NUMBER=$(uci show scogo.@device[0].asset_id | cut -d '=' -f 2 | sed "s/'//g")
 
 ADMIN_NOTIFICATION_TOPIC=$(uci show scogo.@notification[0].admin_notification_topic | cut -d '=' -f 2 | sed "s/'//g")
 ALL_NOTIFICATION_TOPIC=$(uci show scogo.@notification[0].all_notification_topic | cut -d '=' -f 2 | sed "s/'//g")
