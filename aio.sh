@@ -1,10 +1,10 @@
 #!/bin/sh
 
 # Enable debugging mode
-set -x
+#set -x
 
 # Redirect stdout and stderr to a log file in /tmp directory with a unique file name using the current date and time stamp in the file name format (aio-YYYYMMDD-HHMMSS.log)
-exec > >(tee /tmp/aio-$(date '+%Y%m%d-%H%M%S').log) 2>&1
+#exec > >(tee /tmp/aio-$(date '+%Y%m%d-%H%M%S').log) 2>&1
 
 
 ## Kubernetes pre-requisites
@@ -26,8 +26,7 @@ exec > >(tee /tmp/aio-$(date '+%Y%m%d-%H%M%S').log) 2>&1
 #6 Wrap the script (aio.sh) in a curl one-liner installer
 
 ## Update as on 25 March
-#1. config.json and aio.sh are on the router
-#2. aio.sh should be executed on the router and test
+
 
 ##########################
 # Prerequisites Setup    #
@@ -93,7 +92,7 @@ echo "==============================="
 ## Todo : uncomment the below line before deploying to production
 
 echo "===> Fetching default UCI configuration for scogo ..."
-# curl -o /etc/config/scogo https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/uci_config/scogo
+curl -o /etc/config/scogo https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/uci_config/scogo
 
 echo "===> Setting up UCI for Device configuration details ..."
 # Read all keys without quotes or commas using jq
@@ -248,7 +247,6 @@ rathole_setup() {
     rathole_server_endpoint=$(uci get scogo.@infrastructure[0].rathole_server_endpoint | tr '[A-Z]' '[a-z]')
     rathole_default_token=$(uci get scogo.@infrastructure[0].rathole_default_token)
     serial_number=$(uci get scogo.@device[0].serial_number | tr '[A-Z]' '[a-z]')
-    rm /etc/config/rathole-client.toml &> /dev/null
     echo "===> Creating /etc/config/rathole-client.toml file ..."
 cat <<EOF > /etc/config/rathole-client.toml
 [client]
@@ -269,8 +267,9 @@ type = "tcp"
 local_addr = "0.0.0.0:7681"
 nodelay = true
 EOF
-    rm /etc/init.d/rathole &> /dev/null
+
     echo "===> Creating /etc/init.d/rathole file ..."
+
 cat <<EOF > /etc/init.d/rathole
 #!/bin/sh /etc/rc.common
 START=99
@@ -297,7 +296,7 @@ restart_service() {
 }
 status_service() {
     pidof rathole &> /dev/null
-    if [ $? -eq 0 ]; then
+    if [ $(echo '$?') -eq 0 ]; then
         echo "rathole service is running"
     else
         echo "rathole service is not running"
@@ -319,18 +318,18 @@ EOF
     if [ ! -f /usr/bin/rathole ]; then
         echo "===> Downloading Rathole ...."
         killall rathole
-        curl -o /usr/bin/rathole "https://scogo-ser.s3.ap-south-1.amazonaws.com/rathole/target/mipsel-unknown-linux-musl/release/rathole"
+        curl -o /usr/bin/rathole "https://scogo-ser.s3.ap-south-1.amazonaws.com/rathole/target/mipsel-unknown-linux-musl/release/rathole" &> /dev/null
         chmod +x /usr/bin/rathole
     fi
 
     # if /etc/init.d/rathole service file does not exist, create it
     if [ -f /etc/init.d/rathole ]; then
-        rm -f /var/etc/rathole-client.toml
-        rm -f /etc/init.d/rathole
+        rm -f /var/etc/rathole-client.toml &> /dev/null
+        rm -f /etc/init.d/rathole &> /dev/null
         create_initd_service_rathole
-    else 
-        echo "===> Restarting Rathole service ..."
-        /etc/init.d/rathole restart
+    else
+        create_initd_service_rathole
+
     fi
 
 }
@@ -350,7 +349,6 @@ echo "===> Setting up /etc/init.d/rutty service file for Rutty ..."
 hostname=$(uci get scogo.@device[0].hostname | tr '[A-Z]' '[a-z]')
 
 cat <<EOF > /etc/init.d/rutty
-
 #!/bin/sh /etc/rc.common
 START=99
 STOP=15
@@ -376,7 +374,7 @@ restart_service() {
 }
 status_service() {
     pidof rutty &> /dev/null
-    if [ 0 -eq 0 ]; then
+    if [ $(echo '$?') -eq 0 ]; then
         echo "rutty service is running"
     else
         echo "rutty service is not running"
@@ -402,100 +400,18 @@ fi
     if [ ! -f /usr/bin/rutty ]; then
         echo "===> Downloading Rutty ...."
         killall rutty
-        curl -o /usr/bin/rutty "https://scogo-ser.s3.ap-south-1.amazonaws.com/rutty/target/mipsel-unknown-linux-musl/release/rutty"
+        curl -o /usr/bin/rutty "https://scogo-ser.s3.ap-south-1.amazonaws.com/rutty/target/mipsel-unknown-linux-musl/release/rutty" &> /dev/null
         chmod +x /usr/bin/rutty
     fi
 
+
     # if the /etc/init.d/rutty service does not exist, create it
     if [ -f /etc/init.d/rutty ]; then
-        rm -f /etc/init.d/rutty
+        rm -f /etc/init.d/rutty &> /dev/null
         create_initd_service_rutty
     else 
-        chmod +x /etc/init.d/rutty
-        /etc/init.d/rutty start
+        create_initd_service_rutty
     fi
-
-}
-
-
-###################
-# Tinyproxy Setup #
-###################
-
-tinyproxy_setup() {
-    echo "========================"
-    echo "Setting up Tinyproxy ..."
-    echo "========================"
-
-create_initd_service_configuration_tinyproxy() {
-
-echo "===> Setting up /etc/config/tinyproxy.conf file for Tinyproxy ..."
-rm /etc/config/tinyproxy.conf &> /dev/null
-cat <<EOF > /etc/config/tinyproxy.conf
-User nobody
-Group nogroup
-
-Port 8888
-Listen 0.0.0.0
-BindSame yes
-Timeout 600
-
-StatFile "/usr/share/tinyproxy/stats.html"
-Logfile "/var/log/tinyproxy.log"
-#Syslog On
-LogLevel Info
-PidFile "/var/log/tinyproxy.pid"
-
-MaxClients 5
-ViaProxyName "tinyproxy"
-
-ConnectPort 8888
-#ConnectPort 80
-# The following two ports are used by SSL.
-ConnectPort 443
-#ConnectPort 563
-
-ReversePath "/configure/" "http://0.0.0.0/"
-reversePath "/terminal/" "http://0.0.0.0:3000/"
-
-ReverseOnly Yes
-ReverseMagic Yes
-ReverseBaseURL "http://0.0.0.0:8888/"
-
-EOF
-
-echo "===> Setting up /etc/init.d/tinyproxy service file for Tinyproxy ..."
-rm /etc/init.d/tinyproxy &> /dev/null
-cat <<EOF > /etc/init.d/tinyproxy
-#!/bin/sh /etc/rc.common
-
-START=10
-STOP=15
-
-start() {
-        echo starting tinyproxy
-        /usr/bin/tinyproxy -d -c /etc/config/tinyproxy.conf &
-}
-
-stop() {
-        echo stopping tinyproxy
-        killall tinyproxy
-}
-
-EOF
-
-chmod +x /etc/init.d/tinyproxy
-killall tinyproxy
-pidof tinyproxy
-if [ $? -eq 0 ]; then
-    echo "Tinyproxy service is running"
-else
-    echo "===> Starting Tinyproxy service ..."
-    /etc/init.d/tinyproxy start
-fi
-    }
-
-create_initd_service_configuration_tinyproxy
 
 }
 
@@ -504,10 +420,190 @@ create_initd_service_configuration_tinyproxy
 ################
 
 thornol_setup() {
-    echo "======================"
-    echo "Setting up Thornol ..."
-    echo "======================"
-    source ./auto-setup/5_thornol_setup.sh
+echo "======================"
+echo "Setting up Thornol ..."
+echo "======================"
+
+# Create required directories
+mkdir -p /usr/lib/thornol/certs
+
+# Seting variables
+api_key=$(uci get scogo.@infrastructure[0].golain_api_key)
+device_name=$(uci get scogo.@device[0].serial_number | tr '[A-Z]' '[a-z]')
+project_id=$(uci get scogo.@infrastructure[0].golain_project_id)
+org_id=$(uci get scogo.@infrastructure[0].golain_org_id)
+fleet_id=$(uci get scogo.@infrastructure[0].golain_fleet_id)
+fleet_device_template_id=$(uci get scogo.@infrastructure[0].golain_fleet_device_template_id)
+
+# Check if all the variables are set, if not exit
+if [ -z "$api_key" ] || [ -z "$device_name" ] || [ -z "$project_id" ] || [ -z "$org_id" ] || [ -z "$fleet_id" ] || [ -z "$fleet_device_template_id" ]; then
+    echo ">> Error : One or more variables are not set...Exiting"
+    exit 1
+fi
+
+. /usr/share/libubox/jshn.sh
+
+download_thornol_binary(){
+# replace the thornol binary if exists
+if [ -f /usr/bin/thornol ]; then
+    rm /usr/bin/thornol
+fi
+
+# Download the binary using curl
+echo "===> Downloading the latest version of Thornol binary ..."
+curl -s -o /usr/bin/thornol "https://binaries.scogo.golain.io/thornol_app"
+# Make the binary executable
+chmod +x /usr/bin/thornol
+}
+
+create_new_device() {
+# Register a new device based on a device template
+echo "===> Registering a new device based on device template ..."
+
+curl -s --location "https://api.golain.io/core/api/v1/projects/$project_id/fleets/$fleet_id/devices/bulk" \
+--header "ORG-ID: $org_id" \
+--header "Content-Type: application/json" \
+--header "Authorization: APIKEY $api_key" \
+--data '{
+    "device_count": 1,
+    "fleet_device_template_id": "'"$fleet_device_template_id"'",
+    "device_names": ["'"$device_name"'"]
+}' > /usr/lib/thornol/device_registration_response.json
+
+# Check if the response is successful based on json file
+status=$(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e @.ok)
+if [ "$status" != "1" ]; then
+    echo ">> Error : Failed to register the device. Reason: $(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e @.message)"
+    exit 1
+fi
+
+}
+
+setup_shadow_config_values(){
+echo "===> Setting up Shadow Config values ..."
+device_id=$(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e @.data.deviceIds[0])
+curl -s "https://api.golain.io/core/api/v1/projects/$project_id/fleets/$fleet_id/devices/$device_id/shadow" \
+--header "ORG-ID: $org_id" \
+--header "Content-Type: application/json" \
+--header "Authorization: APIKEY $api_key" \
+--data-raw '{"shadow":{"ifaces":[],"interfacesToRead":["lan1","lan2","lan3","lan4","phy0-ap0","phy1-ap0"],"lanMappings":["lan3","lan4","phy0-ap0","phy1-ap0"],"speedTestStatus":"UNKNOWN","uptime":0,"wan1Mapping":"lan1","wan2Mapping":"lan2","wifi5Mapping":"phy1-ap0","wifiMapping":"phy0-ap0"}}' > /usr/lib/thornol/shadow_config_setup_response.json
+}
+
+provision_new_certificate_for_device(){
+# Extract the device id from the response
+device_id=$(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e @.data.deviceIds[0])
+# Ensure api_key and device_name are defined
+if [ -z "$device_id" ]; then
+    echo ">> Error : device_id is not set... Exiting"
+    exit 1
+fi
+# Provision new certificates for the device and decode the response from base64
+echo "===> Provisioning new certificates for the device ..."
+curl -s --location 'https://api.golain.io/core/api/v1/projects/'"$project_id"'/fleets/'"$fleet_id"'/devices/'"$device_id"'/certificates' \
+--header 'ORG-ID: '"$org_id"'' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: APIKEY '"$api_key"'' \
+--data '{}' > /usr/lib/thornol/device_certificate_response.json
+} 
+
+extract_connection_settings(){
+# Load JSON data into jshn
+json_load_file /usr/lib/thornol/device_certificate_response.json
+# Navigate to the certificates object
+json_select certificates
+# Extract and decode connection settings
+json_get_var connection_settings "connection_settings.json"
+echo "$connection_settings" | base64 -d > /usr/lib/thornol/connection_settings.json
+# Extract and decode device certificate
+json_get_var device_cert "device_cert.pem"
+echo "$device_cert" | base64 -d > /usr/lib/thornol/certs/device_cert.pem &> /dev/null
+# Extract and decode device private key
+json_get_var device_private_key "device_private_key.pem"
+echo "$device_private_key" | base64 -d > /usr/lib/thornol/certs/device_private_key.pem &> /dev/null
+# Extract and decode root CA certificate
+json_get_var root_ca_cert "root_ca_cert.pem"
+echo "$root_ca_cert" | base64 -d > /usr/lib/thornol/certs/root_ca_cert.pem &> /dev/null
+}
+
+create_initd_service() {
+# Create a init.d service for the binary
+echo "===> Setting up /etc/init.d/thornol service file for Thornol ..."
+cat <<EOF > /etc/init.d/thornol
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=10
+
+USE_PROCD=1
+
+start_service() {
+    procd_open_instance thornol
+    procd_set_param command /usr/bin/thornol
+
+    procd_set_param limits core="unlimited"
+    procd_set_param env GO_ENV=dev CONFIG_DIR=/usr/lib/thornol/
+    procd_set_param stdout 1
+    procd_set_param stderr 1
+    procd_set_param respawn
+
+    procd_set_param pidfile /var/run/thornol.pid
+    procd_set_param user root
+    procd_close_instance
+}
+
+restart_service() {
+    stop
+    start
+}
+
+EOF
+
+chmod +x /etc/init.d/thornol
+/etc/init.d/thornol enable
+echo "===> Starting Thornol service ..."
+/etc/init.d/thornol start
+}
+
+failure=1
+is_dev=1
+# check if the device is a dev registered device
+if [ -f /usr/lib/thornol/prod ]; then
+    is_dev=0
+fi
+
+# if the /usr/lib/thornol/device_registration_response.json file does not exist or does not have the `ok` key set to 1
+if [ ! -f /usr/lib/thornol/device_registration_response.json ] || [ "$(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e @.ok)" != "1" ]; then
+    # and if the connection_settings file does not exist
+    if [ ! -f /usr/lib/thornol/connection_settings.json ]; then
+        create_new_device
+        setup_shadow_config_values
+    fi
+fi
+
+# if the /usr/lib/thornol/device_certificate_response.json file does not exist or does not have the `ok` key set to 1
+if [ ! -f /usr/lib/thornol/device_certificate_response.json ] || [ "$(jsonfilter -i /usr/lib/thornol/device_certificate_response.json -e @.ok)" != "1" ]; then
+    # and if the device_private_key file does not exist
+    if [ ! -f /usr/lib/thornol/certs/device_private_key.pem ]; then
+        provision_new_certificate_for_device
+    fi
+fi
+
+# extract the connection settings & certificates
+if [ ! -f /usr/lib/thornol/certs/device_private_key.pem ]; then
+    extract_connection_settings
+fi
+
+download_thornol_binary
+
+# if the init.d service does not exist, create it
+if [ ! -f /etc/init.d/thornol ]; then
+    create_initd_service
+    failure=0
+else 
+    echo "===> Starting Thornol service ..."
+    /etc/init.d/thornol restart
+    failure=0
+fi
 }
 
 ## Cleanup
@@ -518,7 +614,7 @@ cleanup() {
 
     ## Opkg remove jq and jsonfilter
     echo "Removing jq package ..."
-    opkg remove jq
+    opkg remove jq 
 }
 
 ################
@@ -526,6 +622,11 @@ cleanup() {
 ################
 
 main() {
+    echo "******************************************"
+    echo "Scogo Edge Router All-in-One Setup Script"
+    echo "******************************************"
+    echo
+
     prerequisites_setup
     # check if the failure variable is set to 1 and if yes, exit
     if [ $failure -eq 1 ]; then
@@ -535,8 +636,7 @@ main() {
     operating_system_setup
     rathole_setup
     rutty_setup
-    # tinyproxy_setup ## Remove tinyproxy setup because it does not support websocket, we have to expose ports directly
-    # thornol_setup
+    thornol_setup
     # cleanup
 
 }
