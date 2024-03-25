@@ -23,7 +23,9 @@
 #3 All the logs failed or successfull should be pushed to remote server with unique file name
 #4 Set password for root user
 #5 Configure wifi and set password
-#6 Wrap the script (aio.sh) in a curl one-liner installer
+#6 Wrap the script (aio.sh) in a curl one-liner installer and update the README.md file with the curl command
+#7 currently the topic for notification are created manually by keyur, we need to automate this by curling the API
+#8 Add k8s operator that monitors config map and restart the pods if there is any change in config map
 
 ## Update as on 25 March
 
