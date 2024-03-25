@@ -1,1 +1,12 @@
+auto-setup/config_original.json
+Scogo_Adguard_Domain_Whitelist.txt
+adguard_setup.sh
+favicon.ico
+01_remote_terminal.sh
+scogo/*
+AdguardHome
+AdguardHome/*
+git.code-workspace
+config.json
 config_original.json
+auto-setup/*

@@ -1,3 +1,7 @@
+## TODO
+- [ ] Based on inputs from config.json file, create scogo/scogo luci configuration file at runtime
+- [ ] 
+
 # Scogo Edge Router Configuration
 Repository contains Scogo Smart Secure Edge Router General Configuration files
 
