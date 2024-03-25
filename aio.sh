@@ -264,10 +264,6 @@ nodelay = true
 type = "tcp"
 local_addr = "0.0.0.0:3000"
 nodelay = true
-[client.services.${serial_number}_terminal_ttyd]
-type = "tcp"
-local_addr = "0.0.0.0:7681"
-nodelay = true
 EOF
 
     echo "===> Creating /etc/init.d/rathole file ..."
@@ -281,7 +277,7 @@ PROG=/usr/bin/rathole
 start_service() {
     echo "Starting rathole service ..."
     procd_open_instance rathole
-    procd_set_param command /usr/bin/rathole -c /etc/config/rathole-client.toml 
+    procd_set_param command /usr/bin/rathole -c /etc/config/rathole-client.toml
     procd_set_param respawn
     procd_set_param stdout 1
     procd_set_param stderr 1
@@ -401,7 +397,7 @@ fi
     # if the rutty binary does not exist, download it
     if [ ! -f /usr/bin/rutty ]; then
         echo "===> Downloading Rutty ...."
-        killall rutty
+        killall rutty  &> /dev/null
         curl -o /usr/bin/rutty "https://scogo-ser.s3.ap-south-1.amazonaws.com/rutty/target/mipsel-unknown-linux-musl/release/rutty" &> /dev/null
         chmod +x /usr/bin/rutty
     fi
@@ -629,16 +625,16 @@ main() {
     echo "******************************************"
     echo
 
-    prerequisites_setup
+    #prerequisites_setup
     # check if the failure variable is set to 1 and if yes, exit
     if [ $failure -eq 1 ]; then
         echo "!! Failed to setup prerequisites. Please try again." >&2
         exit 1
     fi
-    operating_system_setup
+    #operating_system_setup
     rathole_setup
     rutty_setup
-    thornol_setup
+    #thornol_setup
     # cleanup
 
 }
