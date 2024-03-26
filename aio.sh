@@ -69,11 +69,11 @@ opkg update
 #echo "==> Checking if curl and jsonfilter commands are available ..."
 if ! command -v curl &> /dev/null || ! command -v jsonfilter &> /dev/null || ! command -v jq &> /dev/null
 then
-    echo "==> Installing curl, jsonfilter, jq, coreutils-base64 packages ..."
-    opkg install curl coreutils-base64 jsonfilter jq 
+    echo "==> Installing curl, jsonfilter, jq, coreutils-base64, mwan3, luci-app-mwan3 packages ..."
+    opkg install curl coreutils-base64 jsonfilter jq mwan3 luci-app-mwan3
     # check if the installation was successful
     if [ $? -ne 0 ]; then
-        echo "Failed to install curl, jsonfilter, jq, coreutils-base64 packages. Please try again." >&2
+        echo "Failed to install curl, jsonfilter, jq, coreutils-base64, mwan3, luci-app-mwan3 packages. Please try again." >&2
         failure=1
         exit 1
     fi
@@ -203,6 +203,25 @@ unset notification_value
 unset IFS
 unset key
 
+## setup up wifi
+enable_wifi=$(jsonfilter -i config.json -e @.device.enable_wifi)
+
+if [ "$enable_wifi" == "True" ]; then
+    echo "===> Setting up WiFi ..."
+    uci set wireless.radio0.disabled='0'
+    uci set wireless.radio1.disabled='0'
+    uci set wireless.@wifi-iface[0].device='radio0'
+    uci set wireless.@wifi-iface[1].device='radio1'
+    uci set wireless.@wifi-iface[0].ssid="$(jsonfilter -i config.json -e @.device.wifi_ssid)"
+    uci set wireless.@wifi-iface[1].ssid="$(jsonfilter -i config.json -e @.device.wifi_ssid)"
+    uci set wireless.@wifi-iface[0].key="$(jsonfilter -i config.json -e @.device.wifi_ssid_password)"
+    uci set wireless.@wifi-iface[1].key="$(jsonfilter -i config.json -e @.device.wifi_ssid_password)"
+    uci set wireless.@wifi-iface[0].encryption='psk2'
+    uci set wireless.@wifi-iface[1].encryption='psk2'
+    uci commit wireless
+else
+    echo "===> Skipping WiFi setup ..."
+fi
 
 ## Todo : uncomment the section before deploying to production
 
@@ -235,7 +254,13 @@ unset key
 # ## Remove wan,wan6 from firewall zone and add wan1 and wan2
 # echo "===> Removing wan,wan6 from firewall zone and adding wan1 and wan2 ..."
 # uci set firewall.@zone[1].network='wan wan1 wan2'
-# uci commit firewall
+
+echo "===> Enabling software and hardware flow offloading ..."
+uci set firewall.@defaults[0].flow_offloading='1'
+uci set firewall.@defaults[0].flow_offloading_hw='1'
+uci commit firewall
+echo "===> Restarting Firewall Service ..."
+/etc/init.d/firewall reload
 
 }
 
@@ -614,8 +639,8 @@ cleanup() {
     echo "==============="
 
     ## Opkg remove jq and jsonfilter
-    echo "Removing jq package ..."
-    opkg remove jq 
+    echo "Removing coreutils-base64 jsonfilter jq package ..."
+    opkg remove coreutils-base64 jsonfilter jq --force-depends
 }
 
 ################
@@ -628,17 +653,17 @@ main() {
     echo "******************************************"
     echo
 
-    #prerequisites_setup
+    prerequisites_setup
     # check if the failure variable is set to 1 and if yes, exit
     if [ $failure -eq 1 ]; then
         echo "!! Failed to setup prerequisites. Please try again." >&2
         exit 1
     fi
-    #operating_system_setup
+    operating_system_setup
     rathole_setup
     rutty_setup
-    #thornol_setup
-    # cleanup
+    thornol_setup
+    cleanup
 
 }
 

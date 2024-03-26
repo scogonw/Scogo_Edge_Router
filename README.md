@@ -1,13 +1,20 @@
 ## TODO
-- [ ] Based on inputs from config.json file, create scogo/scogo luci configuration file at runtime
-- [ ] 
+- Automate mwan3
+- Automate network
+- Set root password
+- Setup notification
+
 
 # Scogo Edge Router Configuration
-Repository contains Scogo Smart Secure Edge Router General Configuration files
-
-- Tinyproxy
+1. Copy `config.json` locally and update the values as needed.
+2. Move this file to the router's `/root` directory.
+3. Get `aio.sh` file from Internet and move it to the router's `/root` directory.
+4. Run the following commands:
+```bash
+chmod +x aio.sh
+./aio.sh
 ```
-touch /var/log/tinyproxy.log
-chown nobody:nogroup /var/log/tinyproxy.log
-/usr/bin/tinyproxy -d -c /etc/config/tinyproxy.conf &
-```
+1. Sit back and relax. The script will take care of the rest.
+2. Once the script is done, reboot the router.
+3. Go to golain dashboard and check if the router is connected.
+4. delete the `config.json` file from the router.
