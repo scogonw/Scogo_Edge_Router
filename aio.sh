@@ -94,7 +94,10 @@ echo "==============================="
 ## Todo : uncomment the below line before deploying to production
 
 echo "===> Fetching default UCI configuration for scogo ..."
-curl -o /etc/config/scogo https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/uci_config/scogo
+curl -o -s /etc/config/scogo https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/config/scogo
+
+echo "===> Setting banner message ..."
+curl -o -s /etc/banner https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/config/banner
 
 echo "===> Setting up UCI for Device configuration details ..."
 # Read all keys without quotes or commas using jq
