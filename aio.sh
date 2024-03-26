@@ -94,10 +94,10 @@ echo "==============================="
 ## Todo : uncomment the below line before deploying to production
 
 echo "===> Fetching default UCI configuration for scogo ..."
-curl -o -s /etc/config/scogo https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/config/scogo
+curl -s -o /etc/config/scogo https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/config/scogo
 
 echo "===> Setting banner message ..."
-curl -o -s /etc/banner https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/config/banner
+curl -s -o /etc/banner https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/config/banner
 
 echo "===> Setting up UCI for Device configuration details ..."
 # Read all keys without quotes or commas using jq
@@ -319,7 +319,7 @@ EOF
     if [ ! -f /usr/bin/rathole ]; then
         echo "===> Downloading Rathole ...."
         killall rathole
-        curl -o /usr/bin/rathole "https://scogo-ser.s3.ap-south-1.amazonaws.com/rathole/target/mipsel-unknown-linux-musl/release/rathole" &> /dev/null
+        curl -s -o /usr/bin/rathole "https://scogo-ser.s3.ap-south-1.amazonaws.com/rathole/target/mipsel-unknown-linux-musl/release/rathole"
         chmod +x /usr/bin/rathole
     fi
 
@@ -401,7 +401,7 @@ fi
     if [ ! -f /usr/bin/rutty ]; then
         echo "===> Downloading Rutty ...."
         killall rutty  &> /dev/null
-        curl -o /usr/bin/rutty "https://scogo-ser.s3.ap-south-1.amazonaws.com/rutty/target/mipsel-unknown-linux-musl/release/rutty" &> /dev/null
+        curl -s -o /usr/bin/rutty "https://scogo-ser.s3.ap-south-1.amazonaws.com/rutty/target/mipsel-unknown-linux-musl/release/rutty"
         chmod +x /usr/bin/rutty
     fi
 
