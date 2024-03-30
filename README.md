@@ -1,8 +1,6 @@
 ## TODO
-- Automate mwan3
-- Automate network
-- Set root password
 - Setup notification
+- Enable admin user access to LUCI web interface
 
 
 # Scogo Edge Router Configuration

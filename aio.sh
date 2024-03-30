@@ -22,7 +22,6 @@
 #2 Add the cleanup function at the end of the script
 #3 All the logs failed or successfull should be pushed to remote server with unique file name
 #4 Set password for root user
-#5 Configure wifi and set password
 #6 Wrap the script (aio.sh) in a curl one-liner installer and update the README.md file with the curl command
 #7 currently the topic for notification are created manually by keyur, we need to automate this by curling the API
 #8 Add k8s operator that monitors config map and restart the pods if there is any change in config map
@@ -45,7 +44,7 @@ echo "============================"
 ## check if internet is available using ping command and if not available, write the error to stderr and exit
 if ! ping -c 1 google.com &> /dev/null
 then
-    echo "Internet is not available. Please check the internet connection and try again." >&2
+    echo "**ERROR** : Internet is not available. Please check the internet connection and try again.. Exiting" >&2
     failure=1
     exit 1
 fi
@@ -53,7 +52,7 @@ fi
 # if opkg is not installed, abort
 if ! command -v opkg &> /dev/null
 then
-    echo "opkg is not installed. Please install opkg and try again." >&2
+    echo "**ERROR** : opkg is not installed. Please install opkg and try again... Exiting" >&2
     failure=1
     exit 1
 fi
@@ -73,7 +72,7 @@ then
     opkg install curl coreutils-base64 jsonfilter jq mwan3 luci-app-mwan3
     # check if the installation was successful
     if [ $? -ne 0 ]; then
-        echo "Failed to install curl, jsonfilter, jq, coreutils-base64, mwan3, luci-app-mwan3 packages. Please try again." >&2
+        echo "**ERROR** : Failed to install curl, jsonfilter, jq, coreutils-base64, mwan3, luci-app-mwan3 packages. Please try again... Exiting" >&2
         failure=1
         exit 1
     fi
@@ -95,9 +94,20 @@ echo "==============================="
 
 echo "===> Fetching default UCI configuration for scogo ..."
 curl -s -o /etc/config/scogo https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/config/scogo
+if [ $? -ne 0 ]; then
+    echo "**ERROR** : Failed to fetch default UCI configuration for scogo from Github. Please check & try again... Exiting" >&2
+    failure=1
+    exit 1
+fi
 
 echo "===> Setting banner message ..."
 curl -s -o /etc/banner https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/config/banner
+if [ $? -ne 0 ]; then
+    echo "**ERROR** : Failed to fetch banner message from Github. Please check & try again... Exiting" >&2
+    failure=1
+    exit 1
+fi
+
 
 echo "===> Setting up UCI for Device configuration details ..."
 # Read all keys without quotes or commas using jq
@@ -133,41 +143,45 @@ unset site_value
 unset IFS
 unset key
 
+configure_link1=$(jsonfilter -i config.json -e @.device.configure_link1)
+if [ "$configure_link1" == "True" ]; then
+    echo "===> Setting up UCI for Link1 configuration details ..."
+    # Read all keys without quotes or commas using jq
+    link1_keys=$(jq -r '.link1 | keys_unsorted | @csv' config.json | sed 's/"//g')
+    # Split keys into an array using IFS
+    IFS=, ; set -- $link1_keys  # Ash-specific way to split string
+    # Loop through each key and set the value in UCI
+    for key do
+        link1_value=$(jsonfilter -i config.json -e @.link1.$key | tr '[a-z]' '[A-Z]')
+        echo ">> Running uci set scogo.@link1[0].$key=$link1_value ..."
+        uci set scogo.@link1[0]."$key"="$link1_value"
+    done
+    # unset variable value
+    unset link1_keys
+    unset link1_value
+    unset IFS
+    unset key
+fi
 
-echo "===> Setting up UCI for Link1 configuration details ..."
-# Read all keys without quotes or commas using jq
-link1_keys=$(jq -r '.link1 | keys_unsorted | @csv' config.json | sed 's/"//g')
-# Split keys into an array using IFS
-IFS=, ; set -- $link1_keys  # Ash-specific way to split string
-# Loop through each key and set the value in UCI
-for key do
-    link1_value=$(jsonfilter -i config.json -e @.link1.$key | tr '[a-z]' '[A-Z]')
-    echo ">> Running uci set scogo.@link1[0].$key=$link1_value ..."
-    uci set scogo.@link1[0]."$key"="$link1_value"
-done
-# unset variable value
-unset link1_keys
-unset link1_value
-unset IFS
-unset key
-
-
-echo "===> Setting up UCI for Link2 configuration details ..."
-# Read all keys without quotes or commas using jq
-link2_keys=$(jq -r '.link2 | keys_unsorted | @csv' config.json | sed 's/"//g')
-# Split keys into an array using IFS
-IFS=, ; set -- $link2_keys  # Ash-specific way to split string
-# Loop through each key and set the value in UCI
-for key do
-    link2_value=$(jsonfilter -i config.json -e @.link2.$key | tr '[a-z]' '[A-Z]')
-    echo ">> Running uci set scogo.@link2[0].$key=$link2_value ..."
-    uci set scogo.@link2[0]."$key"="$link2_value"
-done
-# unset variable value
-unset link2_keys
-unset link2_value
-unset IFS
-unset key
+configure_link2=$(jsonfilter -i config.json -e @.device.configure_link2)
+if [ "$configure_link2" == "True" ]; then
+    echo "===> Setting up UCI for Link2 configuration details ..."
+    # Read all keys without quotes or commas using jq
+    link2_keys=$(jq -r '.link2 | keys_unsorted | @csv' config.json | sed 's/"//g')
+    # Split keys into an array using IFS
+    IFS=, ; set -- $link2_keys  # Ash-specific way to split string
+    # Loop through each key and set the value in UCI
+    for key do
+        link2_value=$(jsonfilter -i config.json -e @.link2.$key | tr '[a-z]' '[A-Z]')
+        echo ">> Running uci set scogo.@link2[0].$key=$link2_value ..."
+        uci set scogo.@link2[0]."$key"="$link2_value"
+    done
+    # unset variable value
+    unset link2_keys
+    unset link2_value
+    unset IFS
+    unset key
+fi
 
 echo "===> Setting up UCI for Infrastructure configuration details ..."
 # Read all keys without quotes or commas using jq
@@ -204,9 +218,8 @@ unset IFS
 unset key
 
 ## setup up wifi
-enable_wifi=$(jsonfilter -i config.json -e @.device.enable_wifi)
-
-if [ "$enable_wifi" == "True" ]; then
+configure_wifi=$(jsonfilter -i config.json -e @.device.configure_wifi)
+if [ "$configure_wifi" == "True" ]; then
     echo "===> Setting up WiFi ..."
     uci set wireless.radio0.disabled='0'
     uci set wireless.radio1.disabled='0'
@@ -248,19 +261,75 @@ fi
 # uci set network.wan2.device='lan2'
 # uci set network.wan2.proto='dhcp'
 # uci commit network
+
+## To-do: Do not restart networ, instead reboot the device
 # echo "===> Restarting Network Service ..."
 # service network restart
-
-# ## Remove wan,wan6 from firewall zone and add wan1 and wan2
-# echo "===> Removing wan,wan6 from firewall zone and adding wan1 and wan2 ..."
-# uci set firewall.@zone[1].network='wan wan1 wan2'
 
 echo "===> Enabling software and hardware flow offloading ..."
 uci set firewall.@defaults[0].flow_offloading='1'
 uci set firewall.@defaults[0].flow_offloading_hw='1'
 uci commit firewall
+
+#https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/network/C6UT_network
+
+model_code=$(jsonfilter -i config.json -e @.device.model_code)
+echo "===> Setting up Network Configuration for model code $model_code  ..."
+if [ "$model_code" == "C6UT" ]; then
+    echo "===> Fetching default network configuration for model code $model_code ..."
+    curl -s -o /etc/config/network https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/network/C6UT_network
+    if [ $? -ne 0 ]; then
+        echo "**ERROR** : Failed to fetch default network configuration for model code: $model_code from Github. Please check & try again... Exiting" >&2
+        failure=1
+        exit 1
+    fi
+else
+    echo "**ERROR** : Incorrect model code $model_code in config.json ... exiting"
+    exit 1
+fi
+
+echo "===> Setting up Firewall Zones ..."
+uci set firewall.@zone[1].network='wan wan1 wan2'
+uci commit firewall
 echo "===> Restarting Firewall Service ..."
 /etc/init.d/firewall reload
+
+echo "===> Setting up MWAN3 ..."
+curl -s -o /etc/config/mwan3 https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/mwan3/mwan3
+if [ $? -ne 0 ]; then
+    echo "**ERROR** : Failed to fetch default mwan3 configuration from Github. Please check & try again... Exiting" >&2
+    failure=1
+    exit 1
+fi
+service mwan3 restart
+
+echo "===> Setting up root user password ..."
+root_user=$(jsonfilter -i config.json -e @.device.root_user)
+root_password=$(jsonfilter -i config.json -e @.device.root_password)
+echo "root:$root_password" | chpasswd
+echo -e "$root_password\n$root_password" | passwd $root_user
+
+
+admin_username=$(jsonfilter -i config.json -e @.device.admin_username)
+echo "===> Setting up non-root user $admin_username ..."
+admin_password=$(jsonfilter -i config.json -e @.device.admin_password)
+useradd -m -s /bin/ash $admin_username
+echo -e "$admin_password\n$admin_password" | passwd $admin_username
+
+echo "===> Setting up Notifications ..."
+notification_topic=$(jsonfilter -i config.json -e @.notification.notification_topic)
+link_down_notification_workflow=$(jsonfilter -i config.json -e @.notification.link_down_notification_workflow)
+link_up_notification_workflow=$(jsonfilter -i config.json -e @.notification.link_up_notification_workflow)
+email_from=$(jsonfilter -i config.json -e @.notification.email_from)
+
+## Curl https://notification.development.scogo.in/v1/topics and check if response is 200
+echo "===> Creating Notification Topic ..."
+curl -s -o /dev/null -w "%{http_code}" -X POST "https://notification.development.scogo.in/v1/topics" -H "Content-Type: application/json" -d "{\"topic\":\"$notification_topic\"}"
+if [ $? -ne 0 ]; then
+    echo "**ERROR** : Failed to create Notification Topic. Please check & try again... Exiting" >&2
+    failure=1
+    exit 1
+fi
 
 }
 
@@ -639,7 +708,7 @@ cleanup() {
     echo "==============="
 
     ## Opkg remove jq and jsonfilter
-    echo "Removing coreutils-base64 jsonfilter jq package ..."
+    echo "===> Removing coreutils-base64 jsonfilter jq package ..."
     opkg remove coreutils-base64 jsonfilter jq --force-depends
 }
 
@@ -648,6 +717,12 @@ cleanup() {
 ################
 
 main() {
+    
+    if [ ! -f config.json ]; then
+        echo "**ERROR** : config.json file not found in current working directory. Please create the file and try again." >&2
+        exit 1
+    fi
+    
     echo "******************************************"
     echo "Scogo Edge Router All-in-One Setup Script"
     echo "******************************************"
@@ -656,10 +731,16 @@ main() {
     prerequisites_setup
     # check if the failure variable is set to 1 and if yes, exit
     if [ $failure -eq 1 ]; then
-        echo "!! Failed to setup prerequisites. Please try again." >&2
+        echo "**ERROR** : Failed to setup prerequisites. Please check & try again... Exiting" >&2
         exit 1
     fi
+
     operating_system_setup
+    if [ $failure -eq 1 ]; then
+        echo "**ERROR** : Failed to setup operating system. Please check & try again... Exiting" >&2
+        exit 1
+    fi
+
     rathole_setup
     rutty_setup
     thornol_setup
