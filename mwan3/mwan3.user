@@ -30,7 +30,7 @@
 # DEVICE=$3
 
 # create a log file
-touch /var/log/linkstatus.log
+touch /var/log/mwan3_notification.log
 
 # Make sure Notification endpoint and API key are configured in the UCI manually
 NOTIFICATION_ENDPOINT="$(uci show scogo.@notification[0].notification_endpoint | cut -d '=' -f 2 | sed "s/'//g")"
@@ -122,8 +122,8 @@ END
 
 link_up_request_body="${link_up_request_initials} ${PAYLOAD}}"
 
-# echo $link_down_request_body >> /var/log/linkstatus.log
-# echo $link_up_request_body >> /var/log/linkstatus.log
+# echo $link_down_request_body >> /var/log/mwan3_notification.log
+# echo $link_up_request_body >> /var/log/mwan3_notification.log
 
 
 if [ "${ACTION}" = "ifdown" ] ; then
@@ -131,18 +131,18 @@ if [ "${ACTION}" = "ifdown" ] ; then
     if [ "${INTERFACE}" == "wan1" ] || [ "${INTERFACE}" == "wan2" ] ; then
         # check if the interface name has lan in it, if yes then change the interface value to WAN
         # INTERFACE=$(echo $INTERFACE | sed s/lan/wan/g)
-        echo $link_down_request_body >> /var/log/linkstatus.log
+        echo $link_down_request_body >> /var/log/mwan3_notification.log
         curl --location "${NOTIFICATION_ENDPOINT}" \
         --header "Authorization: ${NOTIFICATION_API_KEY}" \
         --header 'Content-Type: application/json' \
-        --data "${link_down_request_body}" >> /var/log/linkstatus.log
-        # if curl command is successfull then print success on the console as well as in the log file /var/log/linkstatus.log, else print failure on console as well as in the log file /var/log/linkstatus.log
+        --data "${link_down_request_body}" >> /var/log/mwan3_notification.log
+        # if curl command is successfull then print success on the console as well as in the log file /var/log/mwan3_notification.log, else print failure on console as well as in the log file /var/log/mwan3_notification.log
         # The format of the log file is as follows:
         # <TimeStamp> <interface> is <LINK_STATUS> ,notification email has been sent or not.
         if [ $? -eq 0 ] ; then
-            echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,notification email has been sent." >> /var/log/linkstatus.log
+            echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,notification email has been sent." >> /var/log/mwan3_notification.log
         else
-            echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,error while sending notification email." >> /var/log/linkstatus.log
+            echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,error while sending notification email." >> /var/log/mwan3_notification.log
         fi
     fi
 fi
@@ -152,18 +152,18 @@ if [ "${ACTION}" = "ifup" ] ; then
     if [ "${INTERFACE}" == "wan1" ] || [ "${INTERFACE}" == "wan2" ] ; then
         # check if the interface name has lan in it, if yes then change the interface value to WAN
         # INTERFACE=$(echo $INTERFACE | sed s/lan/wan/g)
-        echo $link_up_request_body >> /var/log/linkstatus.log
+        echo $link_up_request_body >> /var/log/mwan3_notification.log
         curl --location "${NOTIFICATION_ENDPOINT}" \
         --header "Authorization: ${NOTIFICATION_API_KEY}" \
         --header 'Content-Type: application/json' \
-        --data "${link_up_request_body}" >> /var/log/linkstatus.log
-        # if curl command is successfull then print success on the console as well as in the log file /var/log/linkstatus.log, else print failure on console as well as in the log file /var/log/linkstatus.log
+        --data "${link_up_request_body}" >> /var/log/mwan3_notification.log
+        # if curl command is successfull then print success on the console as well as in the log file /var/log/mwan3_notification.log, else print failure on console as well as in the log file /var/log/mwan3_notification.log
         # The format of the log file is as follows:
         # <TimeStamp> <interface> is <LINK_STATUS> ,notification email has been sent or not.
         if [ $? -eq 0 ] ; then
-            echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,notification email has been sent." >> /var/log/linkstatus.log
+            echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,notification email has been sent." >> /var/log/mwan3_notification.log
         else
-            echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,error while sending notification email." >> /var/log/linkstatus.log
+            echo -e '\n'"$(date) ${INTERFACE} is ${LINK_STATUS} ,error while sending notification email." >> /var/log/mwan3_notification.log
         fi
     fi
 fi

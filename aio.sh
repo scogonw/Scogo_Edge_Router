@@ -125,6 +125,7 @@ unset device_keys
 unset device_value
 unset IFS
 unset key
+uci commit scogo
 
 echo "===> Setting up UCI for Site configuration details ..."
 # Read all keys without quotes or commas using jq
@@ -142,6 +143,7 @@ unset site_keys
 unset site_value
 unset IFS
 unset key
+uci commit scogo
 
 configure_link1=$(jsonfilter -i config.json -e @.device.configure_link1)
 if [ "$configure_link1" == "True" ]; then
@@ -161,6 +163,7 @@ if [ "$configure_link1" == "True" ]; then
     unset link1_value
     unset IFS
     unset key
+    uci commit scogo
 fi
 
 configure_link2=$(jsonfilter -i config.json -e @.device.configure_link2)
@@ -181,6 +184,7 @@ if [ "$configure_link2" == "True" ]; then
     unset link2_value
     unset IFS
     unset key
+    uci commit scogo
 fi
 
 echo "===> Setting up UCI for Infrastructure configuration details ..."
@@ -199,23 +203,7 @@ unset infrastructure_keys
 unset infrastructure_value
 unset IFS
 unset key
-
-echo "===> Setting up UCI for Notification configuration details ..."
-# Read all keys without quotes or commas using jq
-notification_keys=$(jq -r '.notification | keys_unsorted | @csv' config.json | sed 's/"//g')
-# Split keys into an array using IFS
-IFS=, ; set -- $notification_keys  # Ash-specific way to split string
-# Loop through each key and set the value in UCI
-for key do
-    notification_value=$(jsonfilter -i config.json -e @.notification.$key | tr '[a-z]' '[A-Z]')
-    echo ">> Running uci set scogo.@notification[0].$key=$notification_value ..."
-    uci set scogo.@notification[0]."$key"="$notification_value"
-done
-# unset variable value
-unset notification_keys
-unset notification_value
-unset IFS
-unset key
+uci commit scogo
 
 ## setup up wifi
 configure_wifi=$(jsonfilter -i config.json -e @.device.configure_wifi)
@@ -294,15 +282,6 @@ uci commit firewall
 echo "===> Restarting Firewall Service ..."
 /etc/init.d/firewall reload
 
-echo "===> Setting up MWAN3 ..."
-curl -s -o /etc/config/mwan3 https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/mwan3/mwan3
-if [ $? -ne 0 ]; then
-    echo "**ERROR** : Failed to fetch default mwan3 configuration from Github. Please check & try again... Exiting" >&2
-    failure=1
-    exit 1
-fi
-service mwan3 restart
-
 echo "===> Setting up root user password ..."
 root_user=$(jsonfilter -i config.json -e @.device.root_user)
 root_password=$(jsonfilter -i config.json -e @.device.root_password)
@@ -316,20 +295,75 @@ admin_password=$(jsonfilter -i config.json -e @.device.admin_password)
 useradd -m -s /bin/ash $admin_username
 echo -e "$admin_password\n$admin_password" | passwd $admin_username
 
-echo "===> Setting up Notifications ..."
-notification_topic=$(jsonfilter -i config.json -e @.notification.notification_topic)
-link_down_notification_workflow=$(jsonfilter -i config.json -e @.notification.link_down_notification_workflow)
-link_up_notification_workflow=$(jsonfilter -i config.json -e @.notification.link_up_notification_workflow)
-email_from=$(jsonfilter -i config.json -e @.notification.email_from)
+}
 
-## Curl https://notification.development.scogo.in/v1/topics and check if response is 200
-echo "===> Creating Notification Topic ..."
-curl -s -o /dev/null -w "%{http_code}" -X POST "https://notification.development.scogo.in/v1/topics" -H "Content-Type: application/json" -d "{\"topic\":\"$notification_topic\"}"
-if [ $? -ne 0 ]; then
-    echo "**ERROR** : Failed to create Notification Topic. Please check & try again... Exiting" >&2
-    failure=1
-    exit 1
-fi
+###############################
+# MWAN3 & Notification Setup  #
+###############################
+
+mwan3_and_notificatio_setup() {
+    echo "===================================="
+    echo "Setting up MWAN3 & Notification ... "
+    echo "===================================="
+
+    echo "===> Setting up MWAN3 ..."
+    curl -s -o /etc/config/mwan3 https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/mwan3/mwan3
+    if [ $? -ne 0 ]; then
+        echo "**ERROR** : Failed to fetch default mwan3 configuration from Github. Please check & try again... Exiting" >&2
+        failure=1
+        exit 1
+    fi
+    service mwan3 restart
+
+    echo "===> Setting up MWAN3 Notification Action ..."
+    curl -s -o /etc/mwan3.user https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/mwan3/mwan3.user
+    if [ $? -ne 0 ]; then
+        echo "**ERROR** : Failed to fetch default mwan3.user configuration from Github. Please check & try again... Exiting" >&2
+        failure=1
+        exit 1
+    fi
+
+    echo "===> Setting up UCI for Notification configuration details ..."
+    # Read all keys without quotes or commas using jq
+    notification_keys=$(jq -r '.notification | keys_unsorted | @csv' config.json | sed 's/"//g')
+    # Split keys into an array using IFS
+    IFS=, ; set -- $notification_keys  # Ash-specific way to split string
+    # Loop through each key and set the value in UCI
+    for key do
+        notification_value=$(jsonfilter -i config.json -e @.notification.$key | tr '[a-z]' '[A-Z]')
+        echo ">> Running uci set scogo.@notification[0].$key=$notification_value ..."
+        uci set scogo.@notification[0]."$key"="$notification_value"
+    done
+    # unset variable value
+    unset notification_keys
+    unset notification_value
+    unset IFS
+    unset key
+    uci commit scogo
+
+    echo "===> Setting up Notifications ..."
+    notification_service_endpoint=$(uci get scogo.@notification[0].notification_service_endpoint)
+    # Todo : Uncomment the below line before deploying to production, when authenticaion for notification service is enabled
+    #notification_service_auth_key=$(uci get scogo.@notification[0].notification_service_auth_key)
+    notification_topic=$(uci get scogo.@notification[0].notification_topic)
+
+    echo "===> Creating Notification Topic ..."
+    response_code=$(curl -s -o /dev/null -w "%{http_code}" --location $notification_service_endpoint \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "key": "'"$notification_topic"'",
+        "name": "'"$notification_topic"'"
+    }')
+
+    if [ $response_code -eq 200 ]; then
+        echo ">> Notification Topic $notification_topic created successfully"
+    elif [ $response_code -eq 409 ]; then
+        echo ">> Notification Topic $notification_topic already exists"
+    else
+        echo "**ERROR** : Failed to create Notification Topic. Please check & try again... Exiting" >&2
+        failure=1
+        exit 1
+    fi
 
 }
 
@@ -729,7 +763,6 @@ main() {
     echo
 
     prerequisites_setup
-    # check if the failure variable is set to 1 and if yes, exit
     if [ $failure -eq 1 ]; then
         echo "**ERROR** : Failed to setup prerequisites. Please check & try again... Exiting" >&2
         exit 1
@@ -738,6 +771,12 @@ main() {
     operating_system_setup
     if [ $failure -eq 1 ]; then
         echo "**ERROR** : Failed to setup operating system. Please check & try again... Exiting" >&2
+        exit 1
+    fi
+
+    mwan3_and_notificatio_setup
+    if [ $failure -eq 1 ]; then
+        echo "**ERROR** : Failed to setup MWAN3 & Notification. Please check & try again... Exiting" >&2
         exit 1
     fi
 
