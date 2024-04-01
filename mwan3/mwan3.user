@@ -133,7 +133,7 @@ if [ "${ACTION}" = "ifdown" ] ; then
         # INTERFACE=$(echo $INTERFACE | sed s/lan/wan/g)
         echo $link_down_request_body >> /var/log/linkstatus.log
         curl --location "${NOTIFICATION_ENDPOINT}" \
-        --header "Authorization: ${NOTIFICATION_API_KEY}" \
+        # --header "Authorization: ${NOTIFICATION_API_KEY}" \
         --header 'Content-Type: application/json' \
         --data "${link_down_request_body}" >> /var/log/linkstatus.log
         # if curl command is successfull then print success on the console as well as in the log file /var/log/linkstatus.log, else print failure on console as well as in the log file /var/log/linkstatus.log
@@ -154,7 +154,7 @@ if [ "${ACTION}" = "ifup" ] ; then
         # INTERFACE=$(echo $INTERFACE | sed s/lan/wan/g)
         echo $link_up_request_body >> /var/log/linkstatus.log
         curl --location "${NOTIFICATION_ENDPOINT}" \
-        --header "Authorization: ${NOTIFICATION_API_KEY}" \
+        # --header "Authorization: ${NOTIFICATION_API_KEY}" \
         --header 'Content-Type: application/json' \
         --data "${link_up_request_body}" >> /var/log/linkstatus.log
         # if curl command is successfull then print success on the console as well as in the log file /var/log/linkstatus.log, else print failure on console as well as in the log file /var/log/linkstatus.log
