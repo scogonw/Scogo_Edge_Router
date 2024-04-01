@@ -98,7 +98,7 @@ END
 
 link_down_request_initials=$(cat <<-END
 {
-    "name": "$(echo $LINK_DOWN_NOTIFICATION_WORKFLOW)",
+    "identifier": "$(echo $LINK_DOWN_NOTIFICATION_WORKFLOW)",
     "to": {
         "topicKey": "$(echo $ALL_NOTIFICATION_TOPIC)",
         "type": "Topic"
@@ -111,7 +111,7 @@ link_down_request_body="${link_down_request_initials} ${PAYLOAD}}"
 
 link_up_request_initials=$(cat <<-END
 {
-    "name": "$(echo $LINK_UP_NOTIFICATION_WORKFLOW)",
+    "identifier": "$(echo $LINK_UP_NOTIFICATION_WORKFLOW)",
     "to": {
         "topicKey": "$(echo $ALL_NOTIFICATION_TOPIC)",
         "type": "Topic"
@@ -133,7 +133,7 @@ if [ "${ACTION}" = "ifdown" ] ; then
         # INTERFACE=$(echo $INTERFACE | sed s/lan/wan/g)
         echo $link_down_request_body >> /var/log/mwan3_notification.log
         curl --location "${NOTIFICATION_ENDPOINT}" \
-        --header "Authorization: ${NOTIFICATION_API_KEY}" \
+        # --header "Authorization: ${NOTIFICATION_API_KEY}" \
         --header 'Content-Type: application/json' \
         --data "${link_down_request_body}" >> /var/log/mwan3_notification.log
         # if curl command is successfull then print success on the console as well as in the log file /var/log/mwan3_notification.log, else print failure on console as well as in the log file /var/log/mwan3_notification.log
@@ -154,7 +154,7 @@ if [ "${ACTION}" = "ifup" ] ; then
         # INTERFACE=$(echo $INTERFACE | sed s/lan/wan/g)
         echo $link_up_request_body >> /var/log/mwan3_notification.log
         curl --location "${NOTIFICATION_ENDPOINT}" \
-        --header "Authorization: ${NOTIFICATION_API_KEY}" \
+        # --header "Authorization: ${NOTIFICATION_API_KEY}" \
         --header 'Content-Type: application/json' \
         --data "${link_up_request_body}" >> /var/log/mwan3_notification.log
         # if curl command is successfull then print success on the console as well as in the log file /var/log/mwan3_notification.log, else print failure on console as well as in the log file /var/log/mwan3_notification.log
