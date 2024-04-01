@@ -98,7 +98,7 @@ END
 
 link_down_request_initials=$(cat <<-END
 {
-    "name": "$(echo $LINK_DOWN_NOTIFICATION_WORKFLOW)",
+    "identifier": "$(echo $LINK_DOWN_NOTIFICATION_WORKFLOW)",
     "to": {
         "topicKey": "$(echo $ALL_NOTIFICATION_TOPIC)",
         "type": "Topic"
@@ -111,7 +111,7 @@ link_down_request_body="${link_down_request_initials} ${PAYLOAD}}"
 
 link_up_request_initials=$(cat <<-END
 {
-    "name": "$(echo $LINK_UP_NOTIFICATION_WORKFLOW)",
+    "identifier": "$(echo $LINK_UP_NOTIFICATION_WORKFLOW)",
     "to": {
         "topicKey": "$(echo $ALL_NOTIFICATION_TOPIC)",
         "type": "Topic"
