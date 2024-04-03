@@ -798,50 +798,50 @@ main() {
         echo "*********************************************"
 
 
-    access_key_id=$1
-    secret_access_key=$2
-    bucket_name="ser-installaion-logs"
-    region="ap-south-1"
-    endpoint="s3.${region}.amazonaws.com"
+    # access_key_id=$1
+    # secret_access_key=$2
+    # bucket_name="ser-installaion-logs"
+    # region="ap-south-1"
+    # endpoint="s3.${region}.amazonaws.com"
 
-    # Object key (filename) within the bucket
-    # object_key="/tmp/$logfile"  # Create a folder structure with date
+    # # Object key (filename) within the bucket
+    # # object_key="/tmp/$logfile"  # Create a folder structure with date
 
-    # Construct the upload URL with placeholders for signature and date
-    upload_url="https://${bucket_name}.${endpoint}/${logfile}"
+    # # Construct the upload URL with placeholders for signature and date
+    # upload_url="https://${bucket_name}.${endpoint}/${logfile}"
 
-    # Generate the authorization signature (not recommended to embed secret key directly)
-    timestamp=$(date -R)  # Get current date in RFC 2822 format
+    # # Generate the authorization signature (not recommended to embed secret key directly)
+    # timestamp=$(date -R)  # Get current date in RFC 2822 format
 
-    # This is a simplified example using SHA1 (AWS recommends using SigV4)
-    # Refer to AWS documentation for secure signature generation: https://www.amazon.com/gp/help/customer/display.html?nodeId=GRGL3L4SXX29V2ZR
+    # # This is a simplified example using SHA1 (AWS recommends using SigV4)
+    # # Refer to AWS documentation for secure signature generation: https://www.amazon.com/gp/help/customer/display.html?nodeId=GRGL3L4SXX29V2ZR
 
-    string_to_sign="PUT\n\n\n${timestamp}\n/s3/${bucket_name}/${object_key}"
+    # string_to_sign="PUT\n\n\n${timestamp}\n/s3/${bucket_name}/${object_key}"
 
-    signature=$(echo -n "${string_to_sign}" | openssl sha1 -hmac "${secret_access_key}" | sed 's/.*=//')
+    # signature=$(echo -n "${string_to_sign}" | openssl sha1 -hmac "${secret_access_key}" | sed 's/.*=//')
 
-    # Construct the cURL command
-    curl_command="curl -X PUT -T ${logfile} \
-    -H \"Authorization: AWS ${access_key_id}:${signature}\" \
-    -H \"Content-Type: application/octet-stream\" \
-    -H \"Date: ${timestamp}\" \
-    ${upload_url}"
+    # # Construct the cURL command
+    # curl_command="curl -X PUT -T ${logfile} \
+    # -H \"Authorization: AWS ${access_key_id}:${signature}\" \
+    # -H \"Content-Type: application/octet-stream\" \
+    # -H \"Date: ${timestamp}\" \
+    # ${upload_url}"
 
-    # Execute the cURL command and handle errors
-    response=$(eval "${curl_command}")
+    # # Execute the cURL command and handle errors
+    # response=$(eval "${curl_command}")
 
-    if [ $? -eq 0 ]; then
-    echo "Log file uploaded successfully to S3!"
-    else
-        echo "Error uploading log file: $response"
-    # Handle errors (e.g., retry logic, send notification)
-    fi
+    # if [ $? -eq 0 ]; then
+    # echo "Log file uploaded successfully to S3!"
+    # else
+    #     echo "Error uploading log file: $response"
+    # # Handle errors (e.g., retry logic, send notification)
+    # fi
 
-    # Your commands here (output and errors will be captured in the log file and uploaded to S3)
-    command1
-    command2
-    # ...
+    # # Your commands here (output and errors will be captured in the log file and uploaded to S3)
+    # command1
+    # command2
+    # # ...
 
-    echo "Script finished. Check S3 bucket for log details."
+    # echo "Script finished. Check S3 bucket for log details."
 
 }

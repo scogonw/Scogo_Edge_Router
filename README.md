@@ -9,8 +9,7 @@
 3. Get `aio.sh` file from Internet and move it to the router's `/root` directory.
 4. Run the following commands:
 ```bash
-chmod +x aio.sh
-./aio.sh
+sh -c "$(curl -sSL https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/aio.sh)"
 ```
 1. Sit back and relax. The script will take care of the rest.
 2. Once the script is done, reboot the router.
