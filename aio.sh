@@ -752,10 +752,7 @@ cleanup() {
 
 main() {
 
-    #hostname=$(uci get scogo.@device[0].hostname | tr '[A-Z]' '[a-z]')
-    hostname=test1
-    logfile="$hostname-$(date '+%Y%m%d-%H%M%S').log"
-    #touch "/tmp/$logfile"
+    logfile="ser-setup-log-$(date '+%Y%m%d-%H%M%S').log"
 
     {
 
