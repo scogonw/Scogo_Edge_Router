@@ -292,7 +292,7 @@ echo -e "$root_password\n$root_password" | passwd $root_user
 admin_username=$(jsonfilter -i config.json -e @.device.admin_username)
 echo "===> Setting up non-root user $admin_username ..."
 admin_password=$(jsonfilter -i config.json -e @.device.admin_password)
-useradd -m -s /bin/ash $admin_username
+useradd -m -s /bin/ash $admin_username  >&1
 echo -e "$admin_password\n$admin_password" | passwd $admin_username
 
 }
@@ -342,13 +342,13 @@ mwan3_and_notificatio_setup() {
     uci commit scogo
 
     echo "===> Setting up Notifications ..."
-    notification_service_endpoint=$(uci get scogo.@notification[0].notification_service_endpoint)
+    notification_service_endpoint=$(uci get scogo.@notification[0].notification_service_endpoint | tr '[A-Z]' '[a-z]')
     # Todo : Uncomment the below line before deploying to production, when authenticaion for notification service is enabled
     #notification_service_auth_key=$(uci get scogo.@notification[0].notification_service_auth_key)
     notification_topic=$(uci get scogo.@notification[0].notification_topic)
 
     echo "===> Creating Notification Topic ..."
-    response_code=$(curl -s -o /dev/null -w "%{http_code}" --location $notification_service_endpoint \
+    response_code=$(curl -s -o /dev/null -w "%{http_code}" --location $notification_service_endpoint/v1/topics \
     --header 'Content-Type: application/json' \
     --data '{
         "key": "'"$notification_topic"'",
@@ -360,7 +360,7 @@ mwan3_and_notificatio_setup() {
     elif [ $response_code -eq 409 ]; then
         echo ">> Notification Topic $notification_topic already exists"
     else
-        echo "**ERROR** : Failed to create Notification Topic. Please check & try again... Exiting" >&1
+        echo "**ERROR** : Error Code: $response_code, Failed to create Notification Topic. Please check & try again... Exiting" >&1
         failure=1
         exit 1
     fi

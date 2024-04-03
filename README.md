@@ -2,6 +2,13 @@
 - Setup mwan3.user script file, configure as per keyurs API response and run the script
 - Enable admin user access to LUCI web interface
 
+- useradd command output is failing and not able to capture the output in the log file. Need to fix this issue.
+```
+root@OpenWrt:~# useradd -m -s /bin/ash $admin_username  >&1 | tee /tmp/test1-20240403-130823.log
+-ash: useradd: not found
+root@OpenWrt:~#
+```
+
 
 # Scogo Edge Router Configuration
 1. Copy `config.json` locally and update the values as needed.
