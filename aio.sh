@@ -44,7 +44,7 @@ echo "============================"
 ## check if internet is available using ping command and if not available, write the error to stderr and exit
 if ! ping -c 1 google.com &> /dev/null
 then
-    echo "**ERROR** : Internet is not available. Please check the internet connection and try again.. Exiting" >&2
+    echo "**ERROR** : Internet is not available. Please check the internet connection and try again.. Exiting" >&1
     failure=1
     exit 1
 fi
@@ -52,7 +52,7 @@ fi
 # if opkg is not installed, abort
 if ! command -v opkg &> /dev/null
 then
-    echo "**ERROR** : opkg is not installed. Please install opkg and try again... Exiting" >&2
+    echo "**ERROR** : opkg is not installed. Please install opkg and try again... Exiting" >&1
     failure=1
     exit 1
 fi
@@ -72,7 +72,7 @@ then
     opkg install curl coreutils-base64 jsonfilter jq mwan3 luci-app-mwan3
     # check if the installation was successful
     if [ $? -ne 0 ]; then
-        echo "**ERROR** : Failed to install curl, jsonfilter, jq, coreutils-base64, mwan3, luci-app-mwan3 packages. Please try again... Exiting" >&2
+        echo "**ERROR** : Failed to install curl, jsonfilter, jq, coreutils-base64, mwan3, luci-app-mwan3 packages. Please try again... Exiting" >&1
         failure=1
         exit 1
     fi
@@ -95,7 +95,7 @@ echo "==============================="
 echo "===> Fetching default UCI configuration for scogo ..."
 curl -s -o /etc/config/scogo https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/config/scogo
 if [ $? -ne 0 ]; then
-    echo "**ERROR** : Failed to fetch default UCI configuration for scogo from Github. Please check & try again... Exiting" >&2
+    echo "**ERROR** : Failed to fetch default UCI configuration for scogo from Github. Please check & try again... Exiting" >&1
     failure=1
     exit 1
 fi
@@ -103,7 +103,7 @@ fi
 echo "===> Setting banner message ..."
 curl -s -o /etc/banner https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/config/banner
 if [ $? -ne 0 ]; then
-    echo "**ERROR** : Failed to fetch banner message from Github. Please check & try again... Exiting" >&2
+    echo "**ERROR** : Failed to fetch banner message from Github. Please check & try again... Exiting" >&1
     failure=1
     exit 1
 fi
@@ -267,7 +267,7 @@ if [ "$model_code" == "C6UT" ]; then
     echo "===> Fetching default network configuration for model code $model_code ..."
     curl -s -o /etc/config/network https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/network/C6UT_network
     if [ $? -ne 0 ]; then
-        echo "**ERROR** : Failed to fetch default network configuration for model code: $model_code from Github. Please check & try again... Exiting" >&2
+        echo "**ERROR** : Failed to fetch default network configuration for model code: $model_code from Github. Please check & try again... Exiting" >&1
         failure=1
         exit 1
     fi
@@ -309,7 +309,7 @@ mwan3_and_notificatio_setup() {
     echo "===> Setting up MWAN3 ..."
     curl -s -o /etc/config/mwan3 https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/mwan3/mwan3
     if [ $? -ne 0 ]; then
-        echo "**ERROR** : Failed to fetch default mwan3 configuration from Github. Please check & try again... Exiting" >&2
+        echo "**ERROR** : Failed to fetch default mwan3 configuration from Github. Please check & try again... Exiting" >&1
         failure=1
         exit 1
     fi
@@ -318,7 +318,7 @@ mwan3_and_notificatio_setup() {
     echo "===> Setting up MWAN3 Notification Action ..."
     curl -s -o /etc/mwan3.user https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/mwan3/mwan3.user
     if [ $? -ne 0 ]; then
-        echo "**ERROR** : Failed to fetch default mwan3.user configuration from Github. Please check & try again... Exiting" >&2
+        echo "**ERROR** : Failed to fetch default mwan3.user configuration from Github. Please check & try again... Exiting" >&1
         failure=1
         exit 1
     fi
@@ -360,7 +360,7 @@ mwan3_and_notificatio_setup() {
     elif [ $response_code -eq 409 ]; then
         echo ">> Notification Topic $notification_topic already exists"
     else
-        echo "**ERROR** : Failed to create Notification Topic. Please check & try again... Exiting" >&2
+        echo "**ERROR** : Failed to create Notification Topic. Please check & try again... Exiting" >&1
         failure=1
         exit 1
     fi
@@ -752,37 +752,39 @@ cleanup() {
 
 main() {
 
-    hostname=$(uci get scogo.@device[0].hostname | tr '[A-Z]' '[a-z]')
-    log_file="$hostname-$(date '+%Y%m%d-%H%M%S').log"
+    #hostname=$(uci get scogo.@device[0].hostname | tr '[A-Z]' '[a-z]')
+    hostname=test1
+    logfile="$hostname-$(date '+%Y%m%d-%H%M%S').log"
+    #touch "/tmp/$logfile"
 
     {
 
         if [ ! -f config.json ]; then
-            echo "**ERROR** : config.json file not found in current working directory. Please create the file and try again." >&2
+            echo "**ERROR** : config.json file not found in current working directory. Please create the file and try again." >&1
             exit 1
         fi
 
         echo "******************************************"
         echo "Scogo Edge Router All-in-One Setup Script"
-        echo "Log file path : $log_file"
+        echo "Log file path : $logfile"
         echo "******************************************"
         echo
 
         prerequisites_setup
         if [ $failure -eq 1 ]; then
-            echo "**ERROR** : Failed to setup prerequisites. Please check & try again... Exiting" >&2
+            echo "**ERROR** : Failed to setup prerequisites. Please check & try again... Exiting" >&1
             exit 1
         fi
 
         operating_system_setup
         if [ $failure -eq 1 ]; then
-            echo "**ERROR** : Failed to setup operating system. Please check & try again... Exiting" >&2
+            echo "**ERROR** : Failed to setup operating system. Please check & try again... Exiting" >&1
             exit 1
         fi
 
         mwan3_and_notificatio_setup
         if [ $failure -eq 1 ]; then
-            echo "**ERROR** : Failed to setup MWAN3 & Notification. Please check & try again... Exiting" >&2
+            echo "**ERROR** : Failed to setup MWAN3 & Notification. Please check & try again... Exiting" >&1
             exit 1
         fi
 
@@ -791,12 +793,11 @@ main() {
         thornol_setup
         cleanup
 
-    } | tee "/tmp/$logfile" >&1
-
         echo "*********************************************"
         echo "Script finished. Check /tmp/$logfile for details."
         echo "*********************************************"
-
+        
+    } | tee "/tmp/$logfile" >&1
 
     # access_key_id=$1
     # secret_access_key=$2
