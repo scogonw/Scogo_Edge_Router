@@ -26,8 +26,14 @@
 #7 currently the topic for notification are created manually by keyur, we need to automate this by curling the API
 #8 Add k8s operator that monitors config map and restart the pods if there is any change in config map
 
-## Update as on 25 March
+## Update as on 3rd April (@IshanDaga)
 
+############################
+#      ChangeLog           #
+############################
+
+### 3-4-2024 @IshanDaga
+### - Added function to apply device tags by name
 
 ##########################
 # Prerequisites Setup    #
@@ -654,6 +660,32 @@ json_get_var root_ca_cert "root_ca_cert.pem"
 echo "$root_ca_cert" | base64 -d > /usr/lib/thornol/certs/root_ca_cert.pem &> /dev/null
 }
 
+apply_device_tags(){
+    # get the device tags from config.json
+    device_tags=$(jq -c '.device.device_tags' config.json)
+    # if the device tags are not empty
+    if [ ! -z "$device_tags" ]; then
+        # if the device id is not empty
+        if [ ! -z "$device_id" ]; then
+            json_payload="{\"tag_names\":$device_tags}"
+            # apply the device tags to the device
+            echo "===> Applying device tags to the device ..."
+            curl -s --location 'https://api.golain.io/core/api/v1/projects/'"$project_id"'/fleets/'"$fleet_id"'/devices/'"$device_id"'/tags_by_name' \
+            --header "ORG-ID: $org_id" \
+            --header "Content-Type: application/json" \
+            --header "Authorization: APIKEY $api_key" \
+            --data "$json_payload" > /usr/lib/thornol/device_tags_response.json
+
+            # check if the response is successful based on json file
+            status=$(jsonfilter -i /usr/lib/thornol/device_tags_response.json -e @.ok)
+            if [ "$status" != "1" ]; then
+                echo ">> Error : Failed to apply device tags to the device. Reason: $(jsonfilter -i /usr/lib/thornol/device_tags_response.json -e @.message)"
+                exit 1
+            fi
+        fi
+    fi
+}
+
 create_initd_service() {
 # Create a init.d service for the binary
 echo "===> Setting up /etc/init.d/thornol service file for Thornol ..."
@@ -783,6 +815,7 @@ main() {
     rathole_setup
     rutty_setup
     thornol_setup
+    apply_device_tags
     cleanup
 
 }
