@@ -41,7 +41,10 @@ delete_device(){
         echo ">> Error : Device is not registered... Exiting"
         exit 1
     fi
-
+    # remove the thorol directories and files
+    rm -rf /usr/lib/thornol
+    rm -rf /etc/init.d/thornol
+    rm -f /usr/bin/thornol
 }
 
 
