@@ -11,3 +11,4 @@ config.json
 config_original.json
 config_old.json
 auto-setup/*
+*.json

@@ -69,7 +69,7 @@ opkg update
 if ! command -v curl &> /dev/null || ! command -v jsonfilter &> /dev/null || ! command -v jq &> /dev/null
 then
     echo "==> Installing curl, jsonfilter, jq, coreutils-base64, mwan3, luci-app-mwan3 packages ..."
-    opkg install curl coreutils-base64 jsonfilter jq mwan3 luci-app-mwan3
+    opkg install curl coreutils-base64 jsonfilter jq mwan3 luci-app-mwan3 iptables-nft
     # check if the installation was successful
     if [ $? -ne 0 ]; then
         echo "**ERROR** : Failed to install curl, jsonfilter, jq, coreutils-base64, mwan3, luci-app-mwan3 packages. Please try again... Exiting" >&1
@@ -592,7 +592,7 @@ echo "===> Registering a new device based on device template ..."
 curl -s --location "https://api.golain.io/core/api/v1/projects/$project_id/fleets/$fleet_id/devices/bulk" \
 --header "ORG-ID: $org_id" \
 --header "Content-Type: application/json" \
---header "Authorization: APIKEY $api_key" \
+--header "Authorization: $api_key" \
 --data '{
     "device_count": 1,
     "fleet_device_template_id": "'"$fleet_device_template_id"'",
@@ -603,6 +603,7 @@ curl -s --location "https://api.golain.io/core/api/v1/projects/$project_id/fleet
 status=$(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e @.ok)
 if [ "$status" != "1" ]; then
     echo ">> Error : Failed to register the device. Reason: $(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e @.message)"
+    echo ">> For more details check /usr/lib/thornol/device_registration_response.json file... Exiting"
     exit 1
 fi
 
@@ -614,7 +615,7 @@ device_id=$(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e 
 curl -s "https://api.golain.io/core/api/v1/projects/$project_id/fleets/$fleet_id/devices/$device_id/shadow" \
 --header "ORG-ID: $org_id" \
 --header "Content-Type: application/json" \
---header "Authorization: APIKEY $api_key" \
+--header "Authorization: $api_key" \
 --data-raw '{"shadow":{"ifaces":[],"interfacesToRead":["lan1","lan2","lan3","lan4","phy0-ap0","phy1-ap0"],"lanMappings":["lan3","lan4","phy0-ap0","phy1-ap0"],"speedTestStatus":"UNKNOWN","uptime":0,"wan1Mapping":"lan1","wan2Mapping":"lan2","wifi5Mapping":"phy1-ap0","wifiMapping":"phy0-ap0"}}' > /usr/lib/thornol/shadow_config_setup_response.json
 }
 
@@ -631,7 +632,7 @@ echo "===> Provisioning new certificates for the device ..."
 curl -s --location 'https://api.golain.io/core/api/v1/projects/'"$project_id"'/fleets/'"$fleet_id"'/devices/'"$device_id"'/certificates' \
 --header 'ORG-ID: '"$org_id"'' \
 --header 'Content-Type: application/json' \
---header 'Authorization: APIKEY '"$api_key"'' \
+--header 'Authorization: '"$api_key"'' \
 --data '{}' > /usr/lib/thornol/device_certificate_response.json
 } 
 
@@ -645,13 +646,13 @@ json_get_var connection_settings "connection_settings.json"
 echo "$connection_settings" | base64 -d > /usr/lib/thornol/connection_settings.json
 # Extract and decode device certificate
 json_get_var device_cert "device_cert.pem"
-echo "$device_cert" | base64 -d > /usr/lib/thornol/certs/device_cert.pem &> /dev/null
+echo "$device_cert" | base64 -d > /usr/lib/thornol/certs/device_cert.pem
 # Extract and decode device private key
 json_get_var device_private_key "device_private_key.pem"
-echo "$device_private_key" | base64 -d > /usr/lib/thornol/certs/device_private_key.pem &> /dev/null
+echo "$device_private_key" | base64 -d > /usr/lib/thornol/certs/device_private_key.pem
 # Extract and decode root CA certificate
 json_get_var root_ca_cert "root_ca_cert.pem"
-echo "$root_ca_cert" | base64 -d > /usr/lib/thornol/certs/root_ca_cert.pem &> /dev/null
+echo "$root_ca_cert" | base64 -d > /usr/lib/thornol/certs/root_ca_cert.pem
 }
 
 create_initd_service() {
@@ -741,9 +742,9 @@ cleanup() {
     echo "Cleaning up ..."
     echo "==============="
 
-    ## Opkg remove jq and jsonfilter
-    echo "===> Removing coreutils-base64 jsonfilter jq package ..."
-    opkg remove coreutils-base64 jsonfilter jq --force-depends
+    ## Opkg remove jq and
+    echo "===> Removing coreutils-base64 jq package ..."
+    opkg remove coreutils-base64 jq --force-depends
 }
 
 ################

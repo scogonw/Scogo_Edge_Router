@@ -11,11 +11,15 @@ root@OpenWrt:~#
 
 
 # Scogo Edge Router Configuration
-1. Copy `config.json` locally and update the values as needed.
+1. Copy `config_Serial_Number.json` locally and update the values as needed.
 2. Move this file to the router's `/root` directory.
 3. Get `aio.sh` file from Internet and move it to the router's `/root` directory.
 4. Run the following commands:
 ```bash
+
+curl -s -o aio.sh https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/aio.sh
+
+
 sh -c "$(curl -sSL https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/aio.sh)"
 ```
 1. Sit back and relax. The script will take care of the rest.
