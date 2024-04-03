@@ -1,5 +1,5 @@
 ## TODO
-- Setup notification
+- Setup mwan3.user script file, configure as per keyurs API response and run the script
 - Enable admin user access to LUCI web interface
 
 

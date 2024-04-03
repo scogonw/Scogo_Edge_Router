@@ -751,40 +751,97 @@ cleanup() {
 ################
 
 main() {
-    
-    if [ ! -f config.json ]; then
-        echo "**ERROR** : config.json file not found in current working directory. Please create the file and try again." >&2
-        exit 1
-    fi
-    
-    echo "******************************************"
-    echo "Scogo Edge Router All-in-One Setup Script"
-    echo "******************************************"
-    echo
 
-    prerequisites_setup
-    if [ $failure -eq 1 ]; then
-        echo "**ERROR** : Failed to setup prerequisites. Please check & try again... Exiting" >&2
-        exit 1
+    hostname=$(uci get scogo.@device[0].hostname | tr '[A-Z]' '[a-z]')
+    log_file="$hostname-$(date '+%Y%m%d-%H%M%S').log"
+
+    {
+
+        if [ ! -f config.json ]; then
+            echo "**ERROR** : config.json file not found in current working directory. Please create the file and try again." >&2
+            exit 1
+        fi
+
+        echo "******************************************"
+        echo "Scogo Edge Router All-in-One Setup Script"
+        echo "Log file path : $log_file"
+        echo "******************************************"
+        echo
+
+        prerequisites_setup
+        if [ $failure -eq 1 ]; then
+            echo "**ERROR** : Failed to setup prerequisites. Please check & try again... Exiting" >&2
+            exit 1
+        fi
+
+        operating_system_setup
+        if [ $failure -eq 1 ]; then
+            echo "**ERROR** : Failed to setup operating system. Please check & try again... Exiting" >&2
+            exit 1
+        fi
+
+        mwan3_and_notificatio_setup
+        if [ $failure -eq 1 ]; then
+            echo "**ERROR** : Failed to setup MWAN3 & Notification. Please check & try again... Exiting" >&2
+            exit 1
+        fi
+
+        rathole_setup
+        rutty_setup
+        thornol_setup
+        cleanup
+
+    } | tee "/tmp/$logfile" >&1
+
+        echo "*********************************************"
+        echo "Script finished. Check /tmp/$logfile for details."
+        echo "*********************************************"
+
+
+    access_key_id=$1
+    secret_access_key=$2
+    bucket_name="ser-installaion-logs"
+    region="ap-south-1"
+    endpoint="s3.${region}.amazonaws.com"
+
+    # Object key (filename) within the bucket
+    # object_key="/tmp/$logfile"  # Create a folder structure with date
+
+    # Construct the upload URL with placeholders for signature and date
+    upload_url="https://${bucket_name}.${endpoint}/${logfile}"
+
+    # Generate the authorization signature (not recommended to embed secret key directly)
+    timestamp=$(date -R)  # Get current date in RFC 2822 format
+
+    # This is a simplified example using SHA1 (AWS recommends using SigV4)
+    # Refer to AWS documentation for secure signature generation: https://www.amazon.com/gp/help/customer/display.html?nodeId=GRGL3L4SXX29V2ZR
+
+    string_to_sign="PUT\n\n\n${timestamp}\n/s3/${bucket_name}/${object_key}"
+
+    signature=$(echo -n "${string_to_sign}" | openssl sha1 -hmac "${secret_access_key}" | sed 's/.*=//')
+
+    # Construct the cURL command
+    curl_command="curl -X PUT -T ${logfile} \
+    -H \"Authorization: AWS ${access_key_id}:${signature}\" \
+    -H \"Content-Type: application/octet-stream\" \
+    -H \"Date: ${timestamp}\" \
+    ${upload_url}"
+
+    # Execute the cURL command and handle errors
+    response=$(eval "${curl_command}")
+
+    if [ $? -eq 0 ]; then
+    echo "Log file uploaded successfully to S3!"
+    else
+        echo "Error uploading log file: $response"
+    # Handle errors (e.g., retry logic, send notification)
     fi
 
-    operating_system_setup
-    if [ $failure -eq 1 ]; then
-        echo "**ERROR** : Failed to setup operating system. Please check & try again... Exiting" >&2
-        exit 1
-    fi
+    # Your commands here (output and errors will be captured in the log file and uploaded to S3)
+    command1
+    command2
+    # ...
 
-    mwan3_and_notificatio_setup
-    if [ $failure -eq 1 ]; then
-        echo "**ERROR** : Failed to setup MWAN3 & Notification. Please check & try again... Exiting" >&2
-        exit 1
-    fi
-
-    rathole_setup
-    rutty_setup
-    thornol_setup
-    cleanup
+    echo "Script finished. Check S3 bucket for log details."
 
 }
-
-main
