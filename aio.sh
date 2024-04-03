@@ -793,11 +793,11 @@ main() {
         thornol_setup
         cleanup
 
+    } | tee "/tmp/$logfile" >&1
+
         echo "*********************************************"
         echo "Script finished. Check /tmp/$logfile for details."
         echo "*********************************************"
-        
-    } | tee "/tmp/$logfile" >&1
 
     # access_key_id=$1
     # secret_access_key=$2
@@ -846,3 +846,5 @@ main() {
     # echo "Script finished. Check S3 bucket for log details."
 
 }
+
+main
