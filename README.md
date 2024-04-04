@@ -17,8 +17,8 @@ root@OpenWrt:~#
 4. Run the following commands:
 ```bash
 
-curl -s -o aio.sh https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/aio.sh
-
+curl -o aio.sh https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/aio.sh
+chmod +x aio.sh
 
 ./aio.sh
 ```

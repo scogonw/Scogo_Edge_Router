@@ -248,10 +248,6 @@ uci set network.wan2.device='lan2'
 uci set network.wan2.proto='dhcp'
 uci commit network
 
-# To-do: Do not restart networ, instead reboot the device
-echo "===> Restarting Network Service ..."
-service network restart
-
 echo "===> Enabling software and hardware flow offloading ..."
 uci set firewall.@defaults[0].flow_offloading='1'
 uci set firewall.@defaults[0].flow_offloading_hw='1'
@@ -795,6 +791,9 @@ main() {
         echo "*********************************************"
         echo "Script finished. Check /tmp/$logfile for details."
         echo "*********************************************"
+        echo "##### Important #######"
+        echo "Please restart the device to apply the changes"
+        echo "########################"
 
     # access_key_id=$1
     # secret_access_key=$2
