@@ -253,6 +253,17 @@ uci set firewall.@defaults[0].flow_offloading='1'
 uci set firewall.@defaults[0].flow_offloading_hw='1'
 uci commit firewall
 
+## Todo Automate the following
+
+# uci set network.lan.ipaddr='192.168.3.1'
+# uci set dhcp.@dnsmasq[0].server='192.168.3.1'
+# uci set dhcp.lan.dhcp_option='6,192.168.3.1 3,192.168.3.1'
+# uci commit dhcp
+# uci commit network
+# service dnsmasq restart
+
+
+
 #https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/network/C6UT_network
 
 model_code=$(jsonfilter -i config.json -e @.device.model_code)

@@ -120,17 +120,13 @@ link_up_request_body="${link_up_request_initials} ${PAYLOAD}}"
 # echo $link_down_request_body >> /var/log/mwan3_notification.log
 # echo $link_up_request_body >> /var/log/mwan3_notification.log
 
-
 if [ "${ACTION}" = "ifdown" ] ; then
     LINK_STATUS="DOWN"
     if [ "${INTERFACE}" == "wan1" ] || [ "${INTERFACE}" == "wan2" ] ; then
         # check if the interface name has lan in it, if yes then change the interface value to WAN
         # INTERFACE=$(echo $INTERFACE | sed s/lan/wan/g)
         echo $link_down_request_body >> /var/log/mwan3_notification.log
-        curl --location "${NOTIFICATION_SERVICE_ENDPOINT}" \
-        # --header "Authorization: ${NOTIFICATION_API_KEY}" \
-        --header 'Content-Type: application/json' \
-        --data "${link_down_request_body}" >> /var/log/mwan3_notification.log
+        curl --location "${NOTIFICATION_SERVICE_ENDPOINT}/v1/events/trigger" --header 'Content-Type: application/json' --data "${link_down_request_body}" >> /var/log/mwan3_notification.log
         # if curl command is successfull then print success on the console as well as in the log file /var/log/mwan3_notification.log, else print failure on console as well as in the log file /var/log/mwan3_notification.log
         # The format of the log file is as follows:
         # <TimeStamp> <interface> is <LINK_STATUS> ,notification email has been sent or not.
@@ -148,10 +144,7 @@ if [ "${ACTION}" = "ifup" ] ; then
         # check if the interface name has lan in it, if yes then change the interface value to WAN
         # INTERFACE=$(echo $INTERFACE | sed s/lan/wan/g)
         echo $link_up_request_body >> /var/log/mwan3_notification.log
-        curl --location "${NOTIFICATION_SERVICE_ENDPOINT}" \
-        # --header "Authorization: ${NOTIFICATION_API_KEY}" \
-        --header 'Content-Type: application/json' \
-        --data "${link_up_request_body}" >> /var/log/mwan3_notification.log
+        curl --location "${NOTIFICATION_SERVICE_ENDPOINT}/v1/events/trigger" --header 'Content-Type: application/json' --data "${link_up_request_body}" >> /var/log/mwan3_notification.log
         # if curl command is successfull then print success on the console as well as in the log file /var/log/mwan3_notification.log, else print failure on console as well as in the log file /var/log/mwan3_notification.log
         # The format of the log file is as follows:
         # <TimeStamp> <interface> is <LINK_STATUS> ,notification email has been sent or not.
