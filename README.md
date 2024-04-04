@@ -20,6 +20,9 @@ root@OpenWrt:~#
 curl -s -o aio.sh https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/aio.sh
 
 
+./aio.sh
+```
+
 sh -c "$(curl -sSL https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/aio.sh)"
 ```
 1. Sit back and relax. The script will take care of the rest.

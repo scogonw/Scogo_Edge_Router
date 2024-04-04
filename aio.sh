@@ -224,35 +224,33 @@ else
     echo "===> Skipping WiFi setup ..."
 fi
 
-## Todo : uncomment the section before deploying to production
+echo "===> Getting Current Network Configuration ..."
+uci show | grep -i network
 
-# echo "===> Getting Current Network Configuration ..."
-# uci show | grep -i network
+echo "===> Adding LAN3 and LAN4 to the LAN Bridge ..."
+uci set network.@device[0].ports='lan3 lan4'
 
-# echo "===> Adding LAN3 and LAN4 to the LAN Bridge ..."
-# uci set network.@device[0].ports='lan3 lan4'
+## Delete WAN IPv6
+echo "===> Deleting WAN IPv6 ..."
+uci delete network.wan
+uci delete network.wan6
 
-# ## Delete WAN IPv6
-# echo "===> Deleting WAN IPv6 ..."
-# uci delete network.wan
-# uci delete network.wan6
+## Map interface-1 for wan-1/ISP-1
+echo "===> Mapping Port-1 i.e. interface-1 for wan-1/ISP-1 ..."
+uci set network.wan1=interface
+uci set network.wan1.device='lan1'
+uci set network.wan1.proto='dhcp'
 
-# ## Map interface-1 for wan-1/ISP-1
-# echo "===> Mapping Port-1 i.e. interface-1 for wan-1/ISP-1 ..."
-# uci set network.wan1=interface
-# uci set network.wan1.device='lan1'
-# uci set network.wan1.proto='dhcp'
+## Map interface-2 for wan-2
+echo "===> Mapping Port-2 i.e. interface-2 for wan-2/ISP-2 ..."
+uci set network.wan2=interface
+uci set network.wan2.device='lan2'
+uci set network.wan2.proto='dhcp'
+uci commit network
 
-# ## Map interface-2 for wan-2
-# echo "===> Mapping Port-2 i.e. interface-2 for wan-2/ISP-2 ..."
-# uci set network.wan2=interface
-# uci set network.wan2.device='lan2'
-# uci set network.wan2.proto='dhcp'
-# uci commit network
-
-## To-do: Do not restart networ, instead reboot the device
-# echo "===> Restarting Network Service ..."
-# service network restart
+# To-do: Do not restart networ, instead reboot the device
+echo "===> Restarting Network Service ..."
+service network restart
 
 echo "===> Enabling software and hardware flow offloading ..."
 uci set firewall.@defaults[0].flow_offloading='1'
@@ -285,7 +283,8 @@ echo "===> Restarting Firewall Service ..."
 echo "===> Setting up root user password ..."
 root_user=$(jsonfilter -i config.json -e @.device.root_user)
 root_password=$(jsonfilter -i config.json -e @.device.root_password)
-echo "root:$root_password" | chpasswd
+# Todo : remove the below line before deploying to production
+#echo "root:$root_password" | chpasswd
 echo -e "$root_password\n$root_password" | passwd $root_user
 
 
