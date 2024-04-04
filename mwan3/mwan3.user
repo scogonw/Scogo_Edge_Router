@@ -95,7 +95,7 @@ link_down_request_initials=$(cat <<-END
 {
     "identifier": "$(echo $LINK_DOWN_NOTIFICATION_WORKFLOW)",
     "to": {
-        "topicKey": "$(echo $NOTIFICATION_TOPIC)",
+        "topic_key": "$(echo $NOTIFICATION_TOPIC)",
         "type": "Topic"
     },
     "payload":
@@ -108,7 +108,7 @@ link_up_request_initials=$(cat <<-END
 {
     "identifier": "$(echo $LINK_UP_NOTIFICATION_WORKFLOW)",
     "to": {
-        "topicKey": "$(echo $NOTIFICATION_TOPIC)",
+        "topic_key": "$(echo $NOTIFICATION_TOPIC)",
         "type": "Topic"
     },
     "payload":
