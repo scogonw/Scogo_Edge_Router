@@ -14,6 +14,8 @@ config device
     option wifi_ssid 'WIFI_SSID_HER'
     option wifi_ssid_password 'WIFI_SSID_PASSWORD_HERE'
     option device_tags 'customer_name,end_customer_name,ISP1_name,ISP2_name,ISP3_name,state,city'
+    option timezone 'IST-5:30'
+    option zonename 'Asia/Kolkata'
 
 config site
     option customer_name 'Scogo HyperLink'
