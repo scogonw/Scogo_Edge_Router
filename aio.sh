@@ -273,7 +273,7 @@ make=$(uci get scogo.@device[0].make)
 series=$(uci get scogo.@device[0].series)
 model=$(uci get scogo.@device[0].model)
 
-uci set system.@system[0].hostname="$(uci get scogo.@device[0].hostname | tr '[A-Z]' '[a-z]')"
+uci set system.@system[0].hostname="$(uci get scogo.@device[0].hostname | tr '[a-z]' '[A-Z]')"
 uci set system.@system[0].description="$make $series $model"
 uci set system.@system[0].timezone="$(uci set scogo.@device[0].timezone)"
 uci set system.@system[0].zonename="$(uci set scogo.@device[0].zonename)"
