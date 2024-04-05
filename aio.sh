@@ -122,7 +122,7 @@ device_keys=$(jq -r '.device | keys_unsorted | @csv' config.json | sed 's/"//g')
 IFS=, ; set -- $device_keys  # Ash-specific way to split string
 # Loop through each key and set the value in UCI
 for key do
-    device_value=$(jsonfilter -i config.json -e @.device.$key| tr '[a-z]' '[A-Z]')
+    device_value=$(jsonfilter -i config.json -e @.device.$key)
     echo ">> Running uci set scogo.@device[0].$key=$device_value ..."
     uci set scogo.@device[0]."$key"="$device_value"
 done
@@ -140,7 +140,7 @@ site_keys=$(jq -r '.site | keys_unsorted | @csv' config.json | sed 's/"//g')
 IFS=, ; set -- $site_keys  # Ash-specific way to split string
 # Loop through each key and set the value in UCI
 for key do
-    site_value=$(jsonfilter -i config.json -e @.site.$key | tr '[a-z]' '[A-Z]')
+    site_value=$(jsonfilter -i config.json -e @.site.$key)
     echo ">> Running uci set scogo.@site[0].$key=$site_value ..."
     uci set scogo.@site[0]."$key"="$site_value"
 done
@@ -160,7 +160,7 @@ if [ "$configure_link1" == "True" ]; then
     IFS=, ; set -- $link1_keys  # Ash-specific way to split string
     # Loop through each key and set the value in UCI
     for key do
-        link1_value=$(jsonfilter -i config.json -e @.link1.$key | tr '[a-z]' '[A-Z]')
+        link1_value=$(jsonfilter -i config.json -e @.link1.$key)
         echo ">> Running uci set scogo.@link1[0].$key=$link1_value ..."
         uci set scogo.@link1[0]."$key"="$link1_value"
     done
@@ -181,7 +181,7 @@ if [ "$configure_link2" == "True" ]; then
     IFS=, ; set -- $link2_keys  # Ash-specific way to split string
     # Loop through each key and set the value in UCI
     for key do
-        link2_value=$(jsonfilter -i config.json -e @.link2.$key | tr '[a-z]' '[A-Z]')
+        link2_value=$(jsonfilter -i config.json -e @.link2.$key)
         echo ">> Running uci set scogo.@link2[0].$key=$link2_value ..."
         uci set scogo.@link2[0]."$key"="$link2_value"
     done
@@ -211,6 +211,9 @@ unset IFS
 unset key
 uci commit scogo
 
+echo "===> Printing updated Scogo Configuration ..."
+uci show scogo
+
 ## setup up wifi
 configure_wifi=$(jsonfilter -i config.json -e @.device.configure_wifi)
 if [ "$configure_wifi" == "True" ]; then
@@ -231,7 +234,7 @@ else
 fi
 
 echo "===> Getting Current Network Configuration ..."
-uci show | grep -i network
+uci show network
 
 echo "===> Adding LAN3 and LAN4 to the LAN Bridge ..."
 uci set network.@device[0].ports='lan3 lan4'
@@ -283,14 +286,14 @@ uci commit network
 service dnsmasq restart
 
 echo "===> Setting up Hostname, Description, Timezone and Zonename ..."
-make=$(uci get scogo.@device[0].make)
-series=$(uci get scogo.@device[0].series)
-model=$(uci get scogo.@device[0].model)
+make=$(jsonfilter -i config.json -e @.device.make)
+series=$(jsonfilter -i config.json -e @.device.series)
+model=$(jsonfilter -i config.json -e @.device.model)
 
-uci set system.@system[0].hostname="$(uci get scogo.@device[0].hostname | tr '[a-z]' '[A-Z]')"
+uci set system.@system[0].hostname="$(jsonfilter -i config.json -e @.device.hostname | tr '[a-z]' '[A-Z]')"
 uci set system.@system[0].description="$make $series $model"
-uci set system.@system[0].timezone="$(uci set scogo.@device[0].timezone)"
-uci set system.@system[0].zonename="$(uci set scogo.@device[0].zonename)"
+uci set system.@system[0].timezone="$(jsonfilter -i config.json -e @.device.timezone)"
+uci set system.@system[0].zonename="$(jsonfilter -i config.json -e @.device.zonename)"
 uci commit system
 
 echo "===> Setting up Firewall Zones ..."
