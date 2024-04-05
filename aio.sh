@@ -101,13 +101,19 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "===> Setting banner message ..."
-curl -s -o /etc/banner https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/config/banner
-if [ $? -ne 0 ]; then
-    echo "**ERROR** : Failed to fetch banner message from Github. Please check & try again... Exiting" >&1
-    failure=1
-    exit 1
+model_code=$(jsonfilter -i config.json -e @.device.model_code)
+# Check if the model_code variable is not empty
+if [ -n "$model_code" ]; then
+    # Use the model_code variable as part of the URL in the curl command
+    curl -s -o /etc/banner "https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/config/banner_${model_code}"
+        if [ $? -ne 0 ]; then
+            echo "**ERROR** : Failed to fetch https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/config/banner_${model_code} file from Github. Please check & try again... Exiting" >&1
+            failure=1
+        exit 1
 fi
-
+else
+    echo "**ERROR** : Failed to retrieve model code from config.json"
+fi
 
 echo "===> Setting up UCI for Device configuration details ..."
 # Read all keys without quotes or commas using jq
@@ -253,16 +259,25 @@ uci set firewall.@defaults[0].flow_offloading='1'
 uci set firewall.@defaults[0].flow_offloading_hw='1'
 uci commit firewall
 
-## Todo Automate the following
+echo "===> Configuring LAN ..."
+uci set network.lan.ipaddr='192.168.3.1'
+uci set dhcp.@dnsmasq[0].server='192.168.3.1'
+uci set dhcp.lan.dhcp_option='6,192.168.3.1 3,192.168.3.1'
+uci commit dhcp
+uci commit network
+service dnsmasq restart
 
-# uci set network.lan.ipaddr='192.168.3.1'
-# uci set dhcp.@dnsmasq[0].server='192.168.3.1'
-# uci set dhcp.lan.dhcp_option='6,192.168.3.1 3,192.168.3.1'
-# uci commit dhcp
-# uci commit network
-# service dnsmasq restart
+echo "===> Setting up Hostname, Description, Timezone and Zonename ..."
+#hostname=$(uci get scogo.@device[0].hostname | tr '[A-Z]' '[a-z]')
+make=$(uci get scogo.@device[0].make)
+series=$(uci get scogo.@device[0].series)
+model=$(uci get scogo.@device[0].model)
 
-
+uci set system.@system[0].hostname="$(uci get scogo.@device[0].hostname | tr '[A-Z]' '[a-z]')"
+uci set system.@system[0].description="$make $series $model"
+uci set system.@system[0].timezone="$(uci set scogo.@device[0].timezone)"
+uci set system.@system[0].zonename="$(uci set scogo.@device[0].zonename)"
+uci commit system
 
 #https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/network/C6UT_network
 

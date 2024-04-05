@@ -1,4 +1,9 @@
 ## TODO
+
+- Update Banner file for C6UT also in github
+- Test if we need to add entries in https://github.com/scogonw/Scogo_Edge_Router/blob/prod/config/scogo if we need to set anything from uci set command. Does the entry in UCI set command is required in the config file?
+  
+  
 - Setup mwan3.user script file, configure as per keyurs API response and run the script
 - Enable admin user access to LUCI web interface
 
