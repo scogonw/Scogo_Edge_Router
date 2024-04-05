@@ -260,27 +260,6 @@ uci set firewall.@defaults[0].flow_offloading_hw='1'
 uci commit firewall
 
 echo "===> Configuring LAN ..."
-uci set network.lan.ipaddr='192.168.3.1'
-uci set dhcp.@dnsmasq[0].server='192.168.3.1'
-uci set dhcp.lan.dhcp_option='6,192.168.3.1 3,192.168.3.1'
-uci commit dhcp
-uci commit network
-service dnsmasq restart
-
-echo "===> Setting up Hostname, Description, Timezone and Zonename ..."
-#hostname=$(uci get scogo.@device[0].hostname | tr '[A-Z]' '[a-z]')
-make=$(uci get scogo.@device[0].make)
-series=$(uci get scogo.@device[0].series)
-model=$(uci get scogo.@device[0].model)
-
-uci set system.@system[0].hostname="$(uci get scogo.@device[0].hostname | tr '[a-z]' '[A-Z]')"
-uci set system.@system[0].description="$make $series $model"
-uci set system.@system[0].timezone="$(uci set scogo.@device[0].timezone)"
-uci set system.@system[0].zonename="$(uci set scogo.@device[0].zonename)"
-uci commit system
-
-#https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/network/C6UT_network
-
 model_code=$(jsonfilter -i config.json -e @.device.model_code)
 echo "===> Setting up Network Configuration for model code $model_code  ..."
 if [ "$model_code" == "C6UT" ]; then
@@ -295,6 +274,24 @@ else
     echo "**ERROR** : Incorrect model code $model_code in config.json ... exiting"
     exit 1
 fi
+
+uci set network.lan.ipaddr='192.168.3.1'
+uci set dhcp.@dnsmasq[0].server='192.168.3.1'
+uci set dhcp.lan.dhcp_option='6,192.168.3.1 3,192.168.3.1'
+uci commit dhcp
+uci commit network
+service dnsmasq restart
+
+echo "===> Setting up Hostname, Description, Timezone and Zonename ..."
+make=$(uci get scogo.@device[0].make)
+series=$(uci get scogo.@device[0].series)
+model=$(uci get scogo.@device[0].model)
+
+uci set system.@system[0].hostname="$(uci get scogo.@device[0].hostname | tr '[a-z]' '[A-Z]')"
+uci set system.@system[0].description="$make $series $model"
+uci set system.@system[0].timezone="$(uci set scogo.@device[0].timezone)"
+uci set system.@system[0].zonename="$(uci set scogo.@device[0].zonename)"
+uci commit system
 
 echo "===> Setting up Firewall Zones ..."
 uci set firewall.@zone[1].network='wan wan1 wan2'
