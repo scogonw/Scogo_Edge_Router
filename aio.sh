@@ -278,9 +278,14 @@ else
     exit 1
 fi
 
-uci set network.lan.ipaddr='192.168.3.1'
-uci set dhcp.@dnsmasq[0].server='192.168.3.1'
-uci set dhcp.lan.dhcp_option='6,192.168.3.1 3,192.168.3.1'
+network_router_ip=$(jsonfilter -i config.json -e @.device.network_router_ip)
+network_router_domain=$(jsonfilter -i config.json -e @.device.network_router_domain)
+echo "===> Setting up Router IP and Domain ..."
+uci set network.lan.ipaddr="$network_router_ip"
+uci set dhcp.@dnsmasq[0].server="$network_router_ip"
+uci add_list dhcp.@dnsmasq[0].server="/scogo.ser.local/$network_router_ip"
+uci set dhcp.lan.dhcp_option="6,$network_router_ip 3,$network_router_ip"
+echo "address=/scogo.ser.local/$network_router_ip" >> /etc/dnsmasq.conf
 uci commit dhcp
 uci commit network
 service dnsmasq restart
