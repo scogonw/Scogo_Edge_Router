@@ -827,7 +827,7 @@ main() {
     # convert the log file to base64
     base64_logfile=$(base64 -w 0 "/tmp/$logfile")
     # Create a payload for the API request that should include the "serial_number": "serial number", "mime_type": "application/json", "file": filebase64 encoded log file
-    payload='{"serial_number": "'"$serial_number"'", "mime_type": "application/json", "file": "'"$base64_logfile"'", "action": "installation_log_file_update"}'
+    payload='{"serial_number": "'"$serial_number"'", "mime_type": "text/plain", "file": "'"$base64_logfile"'", "action": "installation_log_file"}'
     # Send the payload to the API endpoint in --data option , add the endpoint in --location option , add the headers in --header option the headers should include the content type as application/json
     response_code=$(curl -s -o /dev/null -w "%{http_code}" --location $asset_logs_upload_endpoint \
     --header "Content-Type: application/json" \
@@ -837,7 +837,7 @@ main() {
     if [ $response_code -ne 200 ]; then
         echo "**ERROR** : Failed to upload log file to Scogo Asset Inventory. Error Code: $response_code. Please check & try again... Exiting" >&1
         exit 1
-    elif
+    else
         echo ">> Log file uploaded successfully to Scogo Asset Inventory"
     fi
 
