@@ -12,6 +12,7 @@ root@OpenWrt:~#
 
 - Karan: 
     1) Fix DHCP warning issue (dhcp_option)
+    2) fix non root user creation issue
 
 
 - Keyur : 

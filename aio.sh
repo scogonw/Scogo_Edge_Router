@@ -283,9 +283,9 @@ network_router_domain=$(jsonfilter -i config.json -e @.device.network_router_dom
 echo "===> Setting up Router IP and Domain ..."
 uci set network.lan.ipaddr="$network_router_ip"
 uci set dhcp.@dnsmasq[0].server="$network_router_ip"
-uci add_list dhcp.@dnsmasq[0].server="/scogo.ser.local/$network_router_ip"
+uci add_list dhcp.@dnsmasq[0].server="/$network_router_domain/$network_router_ip"
 uci set dhcp.lan.dhcp_option="6,$network_router_ip 3,$network_router_ip"
-echo "address=/scogo.ser.local/$network_router_ip" >> /etc/dnsmasq.conf
+echo "address=/$network_router_domain/$network_router_ip" >> /etc/dnsmasq.conf
 uci commit dhcp
 uci commit network
 service dnsmasq restart
@@ -819,58 +819,34 @@ main() {
 
     } | tee "/tmp/$logfile" >&1
 
-        echo "*********************************************"
-        echo "Script finished. Check /tmp/$logfile for details."
-        echo "*********************************************"
-        echo "##### Important #######"
+    ## Upload the log file to scogo asset inventory against the device serial number
+
+    echo "===> Uploading log file to Scogo Asset Inventory ..."
+    asset_logs_upload_endpoint="https://ydzkg5tj55.execute-api.ap-south-1.amazonaws.com/prod/api/webhooks/assets/config"
+    serial_number=$(uci get scogo.@device[0].serial_number)
+    # convert the log file to base64
+    base64_logfile=$(base64 -w 0 "/tmp/$logfile")
+    # Create a payload for the API request that should include the "serial_number": "serial number", "mime_type": "application/json", "file": filebase64 encoded log file
+    payload='{"serial_number": "'"$serial_number"'", "mime_type": "application/json", "file": "'"$base64_logfile"'", "action": "installation_log_file_update"}'
+    # Send the payload to the API endpoint in --data option , add the endpoint in --location option , add the headers in --header option the headers should include the content type as application/json
+    response_code=$(curl -s -o /dev/null -w "%{http_code}" --location $asset_logs_upload_endpoint \
+    --header "Content-Type: application/json" \
+    --data "$payload")
+
+    ## check if the response code is 200 and if not, write the error to stderr including the response code and message from the API and exit
+    if [ $response_code -ne 200 ]; then
+        echo "**ERROR** : Failed to upload log file to Scogo Asset Inventory. Error Code: $response_code. Please check & try again... Exiting" >&1
+        exit 1
+    elif
+        echo ">> Log file uploaded successfully to Scogo Asset Inventory"
+    fi
+
+        echo "*****************************************************"
+        echo "Setup Completed ... Check /tmp/$logfile for details."
+        echo "*****************************************************"
+        echo "################ IMPORTANT ####################"
         echo "Please restart the device to apply the changes"
-        echo "########################"
-
-    # access_key_id=$1
-    # secret_access_key=$2
-    # bucket_name="ser-installaion-logs"
-    # region="ap-south-1"
-    # endpoint="s3.${region}.amazonaws.com"
-
-    # # Object key (filename) within the bucket
-    # # object_key="/tmp/$logfile"  # Create a folder structure with date
-
-    # # Construct the upload URL with placeholders for signature and date
-    # upload_url="https://${bucket_name}.${endpoint}/${logfile}"
-
-    # # Generate the authorization signature (not recommended to embed secret key directly)
-    # timestamp=$(date -R)  # Get current date in RFC 2822 format
-
-    # # This is a simplified example using SHA1 (AWS recommends using SigV4)
-    # # Refer to AWS documentation for secure signature generation: https://www.amazon.com/gp/help/customer/display.html?nodeId=GRGL3L4SXX29V2ZR
-
-    # string_to_sign="PUT\n\n\n${timestamp}\n/s3/${bucket_name}/${object_key}"
-
-    # signature=$(echo -n "${string_to_sign}" | openssl sha1 -hmac "${secret_access_key}" | sed 's/.*=//')
-
-    # # Construct the cURL command
-    # curl_command="curl -X PUT -T ${logfile} \
-    # -H \"Authorization: AWS ${access_key_id}:${signature}\" \
-    # -H \"Content-Type: application/octet-stream\" \
-    # -H \"Date: ${timestamp}\" \
-    # ${upload_url}"
-
-    # # Execute the cURL command and handle errors
-    # response=$(eval "${curl_command}")
-
-    # if [ $? -eq 0 ]; then
-    # echo "Log file uploaded successfully to S3!"
-    # else
-    #     echo "Error uploading log file: $response"
-    # # Handle errors (e.g., retry logic, send notification)
-    # fi
-
-    # # Your commands here (output and errors will be captured in the log file and uploaded to S3)
-    # command1
-    # command2
-    # # ...
-
-    # echo "Script finished. Check S3 bucket for log details."
+        echo "###############################################"
 
 }
 
