@@ -46,6 +46,7 @@ if ! ping -c 1 google.com &> /dev/null
 then
     echo "**ERROR** : Internet is not available. Please check the internet connection and try again.. Exiting" >&1
     failure=1
+    upload_log_file
     exit 1
 fi
 
@@ -54,6 +55,7 @@ if ! command -v opkg &> /dev/null
 then
     echo "**ERROR** : opkg is not installed. Please install opkg and try again... Exiting" >&1
     failure=1
+    upload_log_file
     exit 1
 fi
 
@@ -74,6 +76,7 @@ then
     if [ $? -ne 0 ]; then
         echo "**ERROR** : Failed to install curl, jsonfilter, jq, coreutils-base64, mwan3, luci-app-mwan3 packages. Please try again... Exiting" >&1
         failure=1
+        upload_log_file
         exit 1
     fi
 fi
@@ -97,6 +100,7 @@ curl -s -o /etc/config/scogo https://raw.githubusercontent.com/scogonw/Scogo_Edg
 if [ $? -ne 0 ]; then
     echo "**ERROR** : Failed to fetch default UCI configuration for scogo from Github. Please check & try again... Exiting" >&1
     failure=1
+    upload_log_file
     exit 1
 fi
 
@@ -109,7 +113,8 @@ if [ -n "$model_code" ]; then
         if [ $? -ne 0 ]; then
             echo "**ERROR** : Failed to fetch https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/config/banner_${model_code} file from Github. Please check & try again... Exiting" >&1
             failure=1
-        exit 1
+            upload_log_file
+            exit 1
 fi
 else
     echo "**ERROR** : Failed to retrieve model code from config.json"
@@ -271,10 +276,12 @@ if [ "$model_code" == "C6UT" ]; then
     if [ $? -ne 0 ]; then
         echo "**ERROR** : Failed to fetch default network configuration for model code: $model_code from Github. Please check & try again... Exiting" >&1
         failure=1
+        upload_log_file
         exit 1
     fi
 else
     echo "**ERROR** : Incorrect model code $model_code in config.json ... exiting"
+    upload_log_file
     exit 1
 fi
 
@@ -337,6 +344,7 @@ mwan3_and_notificatio_setup() {
     if [ $? -ne 0 ]; then
         echo "**ERROR** : Failed to fetch default mwan3 configuration from Github. Please check & try again... Exiting" >&1
         failure=1
+        upload_log_file
         exit 1
     fi
     service mwan3 restart
@@ -346,6 +354,7 @@ mwan3_and_notificatio_setup() {
     if [ $? -ne 0 ]; then
         echo "**ERROR** : Failed to fetch default mwan3.user configuration from Github. Please check & try again... Exiting" >&1
         failure=1
+        upload_log_file
         exit 1
     fi
 
@@ -356,7 +365,7 @@ mwan3_and_notificatio_setup() {
     IFS=, ; set -- $notification_keys  # Ash-specific way to split string
     # Loop through each key and set the value in UCI
     for key do
-        notification_value=$(jsonfilter -i config.json -e @.notification.$key | tr '[a-z]' '[A-Z]')
+        notification_value=$(jsonfilter -i config.json -e @.notification.$key)
         echo ">> Running uci set scogo.@notification[0].$key=$notification_value ..."
         uci set scogo.@notification[0]."$key"="$notification_value"
     done
@@ -388,6 +397,7 @@ mwan3_and_notificatio_setup() {
     else
         echo "**ERROR** : Error Code: $response_code, Failed to create Notification Topic. Please check & try again... Exiting" >&1
         failure=1
+        upload_log_file
         exit 1
     fi
 
@@ -593,6 +603,7 @@ fleet_device_template_id=$(uci get scogo.@infrastructure[0].golain_fleet_device_
 # Check if all the variables are set, if not exit
 if [ -z "$api_key" ] || [ -z "$device_name" ] || [ -z "$project_id" ] || [ -z "$org_id" ] || [ -z "$fleet_id" ] || [ -z "$fleet_device_template_id" ]; then
     echo ">> Error : One or more variables are not set...Exiting"
+    upload_log_file
     exit 1
 fi
 
@@ -630,6 +641,7 @@ status=$(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e @.o
 if [ "$status" != "1" ]; then
     echo ">> Error : Failed to register the device. Reason: $(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e @.message)"
     echo ">> For more details check /usr/lib/thornol/device_registration_response.json file... Exiting"
+    upload_log_file
     exit 1
 fi
 
@@ -651,6 +663,7 @@ device_id=$(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e 
 # Ensure api_key and device_name are defined
 if [ -z "$device_id" ]; then
     echo ">> Error : device_id is not set... Exiting"
+    upload_log_file
     exit 1
 fi
 # Provision new certificates for the device and decode the response from base64
@@ -773,6 +786,32 @@ cleanup() {
     opkg remove coreutils-base64 jq --force-depends
 }
 
+## Upload Log file to Scogo Asset Inventory
+upload_log_file() {
+
+    ## Upload the log file to scogo asset inventory against the device serial number
+    echo "===> Uploading log file to Scogo Asset Inventory ..."
+    asset_file_upload_endpoint="https://ydzkg5tj55.execute-api.ap-south-1.amazonaws.com/prod/api/webhooks/assets/config"
+    serial_number=$(uci get scogo.@device[0].serial_number)
+    # convert the log file to base64
+    base64_logfile=$(base64 -w 0 "/tmp/$logfile")
+    # Create a payload for the API request that should include the "serial_number": "serial number", "mime_type": "application/json", "file": filebase64 encoded log file
+    payload='{"serial_number": "'"$serial_number"'", "mime_type": "text/plain", "file": "'"$base64_logfile"'", "action": "installation_log_file"}'
+    # Send the payload to the API endpoint in --data option , add the endpoint in --location option , add the headers in --header option the headers should include the content type as application/json
+    response_code=$(curl -s -o /dev/null -w "%{http_code}" --location $asset_file_upload_endpoint \
+    --header "Content-Type: application/json" \
+    --data "$payload")
+    ## check if the response code is 200 and if not, write the error to stderr including the response code and message from the API and exit
+    if [ $response_code -ne 200 ]; then
+        echo "**ERROR** : Failed to upload log file to Scogo Asset Inventory. Error Code: $response_code. Please check & try again... Exiting" >&1
+        upload_log_file
+        exit 1
+    else
+        echo ">> Log file uploaded successfully to Scogo Asset Inventory"
+    fi
+
+}
+
 ################
 # Main Program #
 ################
@@ -785,6 +824,7 @@ main() {
 
         if [ ! -f config.json ]; then
             echo "**ERROR** : config.json file not found in current working directory. Please create the file and try again." >&1
+            upload_log_file
             exit 1
         fi
 
@@ -797,56 +837,59 @@ main() {
         prerequisites_setup
         if [ $failure -eq 1 ]; then
             echo "**ERROR** : Failed to setup prerequisites. Please check & try again... Exiting" >&1
+            upload_log_file
             exit 1
         fi
 
         operating_system_setup
         if [ $failure -eq 1 ]; then
             echo "**ERROR** : Failed to setup operating system. Please check & try again... Exiting" >&1
+            upload_log_file
             exit 1
         fi
 
         mwan3_and_notificatio_setup
         if [ $failure -eq 1 ]; then
             echo "**ERROR** : Failed to setup MWAN3 & Notification. Please check & try again... Exiting" >&1
+            upload_log_file
             exit 1
         fi
 
         rathole_setup
         rutty_setup
         thornol_setup
-        cleanup
+
+        ## Upload the config.json file to scogo asset inventory against the device serial number
+        echo "===> Uploading config.json file to Scogo Asset Inventory ..."
+        # convert the config.json file to base64
+        base64_configfile=$(base64 -w 0 "config.json")
+        # Create a payload for the API request that should include the "serial_number": "serial number", "mime_type": "application/json", "file": filebase64 encoded config.json file
+        payload='{"serial_number": "'"$serial_number"'", "mime_type": "application/json", "file": "'"$base64_configfile"'", "action": "device_config_file"}'
+        # Send the payload to the API endpoint in --data option , add the endpoint in --location option , add the headers in --header option the headers should include the content type as application/json
+        response_code=$(curl -s -o /dev/null -w "%{http_code}" --location $asset_file_upload_endpoint \
+        --header "Content-Type: application/json" \
+        --data "$payload")
+    
+        ## check if the response code is 200 and if not, write the error to stderr including the response code and message from the API and exit
+        if [ $response_code -ne 200 ]; then
+            echo "**ERROR** : Failed to upload config.json file to Scogo Asset Inventory. Error Code: $response_code. Please check & try again... Exiting" >&1
+            upload_log_file
+            exit 1
+        else
+            echo ">> Config file uploaded successfully to Scogo Asset Inventory"
+        fi
 
     } | tee "/tmp/$logfile" >&1
 
-    ## Upload the log file to scogo asset inventory against the device serial number
+    echo "*****************************************************"
+    echo "Setup Completed ... Check /tmp/$logfile for details."
+    echo "*****************************************************"
 
-    echo "===> Uploading log file to Scogo Asset Inventory ..."
-    asset_logs_upload_endpoint="https://ydzkg5tj55.execute-api.ap-south-1.amazonaws.com/prod/api/webhooks/assets/config"
-    serial_number=$(uci get scogo.@device[0].serial_number)
-    # convert the log file to base64
-    base64_logfile=$(base64 -w 0 "/tmp/$logfile")
-    # Create a payload for the API request that should include the "serial_number": "serial number", "mime_type": "application/json", "file": filebase64 encoded log file
-    payload='{"serial_number": "'"$serial_number"'", "mime_type": "text/plain", "file": "'"$base64_logfile"'", "action": "installation_log_file"}'
-    # Send the payload to the API endpoint in --data option , add the endpoint in --location option , add the headers in --header option the headers should include the content type as application/json
-    response_code=$(curl -s -o /dev/null -w "%{http_code}" --location $asset_logs_upload_endpoint \
-    --header "Content-Type: application/json" \
-    --data "$payload")
+    cleanup
 
-    ## check if the response code is 200 and if not, write the error to stderr including the response code and message from the API and exit
-    if [ $response_code -ne 200 ]; then
-        echo "**ERROR** : Failed to upload log file to Scogo Asset Inventory. Error Code: $response_code. Please check & try again... Exiting" >&1
-        exit 1
-    else
-        echo ">> Log file uploaded successfully to Scogo Asset Inventory"
-    fi
-
-        echo "*****************************************************"
-        echo "Setup Completed ... Check /tmp/$logfile for details."
-        echo "*****************************************************"
-        echo "################ IMPORTANT ####################"
-        echo "Please restart the device to apply the changes"
-        echo "###############################################"
+    echo "################ IMPORTANT ####################"
+    echo "Please restart the device to apply the changes"
+    echo "###############################################"
 
 }
 
