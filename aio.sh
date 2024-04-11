@@ -337,7 +337,7 @@ mwan3_and_notificatio_setup() {
     echo "===================================="
     echo "Setting up MWAN3 & Notification ... "
     echo "===================================="
-
+    
     echo "===> Setting up MWAN3 ..."
     curl -s -o /etc/config/mwan3 https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/mwan3/mwan3
     if [ $? -ne 0 ]; then
@@ -716,7 +716,7 @@ apply_device_tags(){
 }
 
 add_device_metadata(){
-    echo "===> Adding Metadata to the device ..."
+    echo "===> Fetching Device Metadata ..."
     # pickup relevant metadata from config.json
     device_metadata='{
     "device":
@@ -727,11 +727,10 @@ add_device_metadata(){
             "model": "'"$(uci get scogo.@device[0].model)"'",
             "model_code": "'"$(uci get scogo.@device[0].model_code)"'",
             "part_code": "'"$(uci get scogo.@device[0].part_code)"'",
-            "asset_id": "'"$(uci get scogo.@device[0].asset_id)"'",
             "asset_category": "'"$(uci get scogo.@device[0].asset_category)"'",
             "asset_type": "'"$(uci get scogo.@device[0].asset_type)"'",
             "license_key": "'"$(uci get scogo.@device[0].license_key)"'",
-            "enable_wifi": "'"$(uci get scogo.@device[0].enable_wifi)"'",
+            "configure_wifi": "'"$(uci get scogo.@device[0].configure_wifi)"'",
             "wifi_ssid": "'"$(uci get scogo.@device[0].wifi_ssid)"'",
             "wifi_ssid_password": "'"$(uci get scogo.@device[0].wifi_ssid_password)"'"
         },
@@ -805,7 +804,7 @@ add_device_metadata(){
 }
 
 add_device_location(){
-    echo "===> Adding Metadata to the device ..."
+    echo "===> Fetching Device Location ..."
     #get the device location from config.json
     location_string=$(uci get scogo.@site[0].device_latitude_longitude)
     latitude=$(echo $location_string | cut -d, -f1)
@@ -816,7 +815,7 @@ add_device_location(){
         if [ ! -z "$device_id" ]; then
             json_payload="{\"location\":{\"latitude\":$latitude,\"longitude\":$longitude}"
             # apply the device tags to the device
-            echo "===> Applying device tags to the device ..."
+            echo "===> Updating Device Location Metadata ..."
             curl -s 'https://api.golain.io/core/api/v1/projects/'"$project_id"'/fleets/'"$fleet_id"'/devices/'"$device_id"'/location' \
             --header "ORG-ID: $org_id" \
             --header "Content-Type: application/json" \
@@ -904,6 +903,7 @@ if [ ! -f /usr/lib/thornol/certs/device_private_key.pem ]; then
 fi
 
 download_thornol_binary
+## Todo : check why apply_device_tags method is not called at this stage ?
 add_device_metadata
 add_device_location
 
