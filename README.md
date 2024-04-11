@@ -19,13 +19,14 @@ root@OpenWrt:~#
 - Keyur : 
     - [ ] Move all services to production 
     - [ ] discuss how notification service could be extended to push data over Webhooks or HTTP endpoint to create new service tickets on scogo platform or on 3rd party ticketing system 
-    - [ ] Provide notification endpoint to Ishan with correct payload format to send notifications to subscribers
+    - [x] Provide notification endpoint to Ishan with correct payload format to send notifications to subscribers
     - [ ] Upload log file to S3 and store it against right serial number in the database
 
 - Ishan: 
     - [x] Fix API key issue [Resolved in Discord]
-    - [x] Double check the submitted PR on aio.sh so that the tags defined in config.json should get auto-applied to devices at the time of registration [#3]
-    - [x] Submit PR for device migration script from one fleet to another [#3]
+    - [x] Double check the submitted PR on aio.sh so that the tags defined in config.json should get auto-applied to devices at the time of registration [[#3](https://github.com/scogonw/Scogo_Edge_Router/pull/3)]
+    - [x] Submit PR for device migration script from one fleet to another [[#3](https://github.com/scogonw/Scogo_Edge_Router/pull/3)]
+    - [x] Add device location and device metadata calls to aio.sh and migrate.sh scripts [[#3](https://github.com/scogonw/Scogo_Edge_Router/pull/3)]
     - [ ] Add scogo notification API to Golan's rule engine to send notifications to subscribers in case of device is offline with retries mechanisms
     - [ ] Possiblity of submitting remote commands to device and get output back from the device
 
