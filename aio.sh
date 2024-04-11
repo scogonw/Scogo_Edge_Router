@@ -50,7 +50,7 @@ echo "============================"
 ## check if internet is available using ping command and if not available, write the error to stderr and exit
 if ! ping -c 1 google.com &> /dev/null
 then
-    echo "**ERROR** : Internet is not available. Please check the internet connection and try again.. Exiting" >&2
+    echo "**ERROR** : Internet is not available. Please check the internet connection and try again.. Exiting" >&1
     failure=1
     exit 1
 fi
@@ -58,7 +58,7 @@ fi
 # if opkg is not installed, abort
 if ! command -v opkg &> /dev/null
 then
-    echo "**ERROR** : opkg is not installed. Please install opkg and try again... Exiting" >&2
+    echo "**ERROR** : opkg is not installed. Please install opkg and try again... Exiting" >&1
     failure=1
     exit 1
 fi
@@ -75,10 +75,10 @@ opkg update
 if ! command -v curl &> /dev/null || ! command -v jsonfilter &> /dev/null || ! command -v jq &> /dev/null
 then
     echo "==> Installing curl, jsonfilter, jq, coreutils-base64, mwan3, luci-app-mwan3 packages ..."
-    opkg install curl coreutils-base64 jsonfilter jq mwan3 luci-app-mwan3
+    opkg install curl coreutils-base64 jsonfilter jq mwan3 luci-app-mwan3 iptables-nft
     # check if the installation was successful
     if [ $? -ne 0 ]; then
-        echo "**ERROR** : Failed to install curl, jsonfilter, jq, coreutils-base64, mwan3, luci-app-mwan3 packages. Please try again... Exiting" >&2
+        echo "**ERROR** : Failed to install curl, jsonfilter, jq, coreutils-base64, mwan3, luci-app-mwan3 packages. Please try again... Exiting" >&1
         failure=1
         exit 1
     fi
@@ -101,7 +101,7 @@ echo "==============================="
 echo "===> Fetching default UCI configuration for scogo ..."
 curl -s -o /etc/config/scogo https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/config/scogo
 if [ $? -ne 0 ]; then
-    echo "**ERROR** : Failed to fetch default UCI configuration for scogo from Github. Please check & try again... Exiting" >&2
+    echo "**ERROR** : Failed to fetch default UCI configuration for scogo from Github. Please check & try again... Exiting" >&1
     failure=1
     exit 1
 fi
@@ -109,7 +109,7 @@ fi
 echo "===> Setting banner message ..."
 curl -s -o /etc/banner https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/config/banner
 if [ $? -ne 0 ]; then
-    echo "**ERROR** : Failed to fetch banner message from Github. Please check & try again... Exiting" >&2
+    echo "**ERROR** : Failed to fetch banner message from Github. Please check & try again... Exiting" >&1
     failure=1
     exit 1
 fi
@@ -230,40 +230,45 @@ else
     echo "===> Skipping WiFi setup ..."
 fi
 
-## Todo : uncomment the section before deploying to production
+echo "===> Getting Current Network Configuration ..."
+uci show | grep -i network
 
-# echo "===> Getting Current Network Configuration ..."
-# uci show | grep -i network
+echo "===> Adding LAN3 and LAN4 to the LAN Bridge ..."
+uci set network.@device[0].ports='lan3 lan4'
 
-# echo "===> Adding LAN3 and LAN4 to the LAN Bridge ..."
-# uci set network.@device[0].ports='lan3 lan4'
+## Delete WAN IPv6
+echo "===> Deleting WAN IPv6 ..."
+uci delete network.wan
+uci delete network.wan6
 
-# ## Delete WAN IPv6
-# echo "===> Deleting WAN IPv6 ..."
-# uci delete network.wan
-# uci delete network.wan6
+## Map interface-1 for wan-1/ISP-1
+echo "===> Mapping Port-1 i.e. interface-1 for wan-1/ISP-1 ..."
+uci set network.wan1=interface
+uci set network.wan1.device='lan1'
+uci set network.wan1.proto='dhcp'
 
-# ## Map interface-1 for wan-1/ISP-1
-# echo "===> Mapping Port-1 i.e. interface-1 for wan-1/ISP-1 ..."
-# uci set network.wan1=interface
-# uci set network.wan1.device='lan1'
-# uci set network.wan1.proto='dhcp'
-
-# ## Map interface-2 for wan-2
-# echo "===> Mapping Port-2 i.e. interface-2 for wan-2/ISP-2 ..."
-# uci set network.wan2=interface
-# uci set network.wan2.device='lan2'
-# uci set network.wan2.proto='dhcp'
-# uci commit network
-
-## To-do: Do not restart networ, instead reboot the device
-# echo "===> Restarting Network Service ..."
-# service network restart
+## Map interface-2 for wan-2
+echo "===> Mapping Port-2 i.e. interface-2 for wan-2/ISP-2 ..."
+uci set network.wan2=interface
+uci set network.wan2.device='lan2'
+uci set network.wan2.proto='dhcp'
+uci commit network
 
 echo "===> Enabling software and hardware flow offloading ..."
 uci set firewall.@defaults[0].flow_offloading='1'
 uci set firewall.@defaults[0].flow_offloading_hw='1'
 uci commit firewall
+
+## Todo Automate the following
+
+# uci set network.lan.ipaddr='192.168.3.1'
+# uci set dhcp.@dnsmasq[0].server='192.168.3.1'
+# uci set dhcp.lan.dhcp_option='6,192.168.3.1 3,192.168.3.1'
+# uci commit dhcp
+# uci commit network
+# service dnsmasq restart
+
+
 
 #https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/network/C6UT_network
 
@@ -273,7 +278,7 @@ if [ "$model_code" == "C6UT" ]; then
     echo "===> Fetching default network configuration for model code $model_code ..."
     curl -s -o /etc/config/network https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/network/C6UT_network
     if [ $? -ne 0 ]; then
-        echo "**ERROR** : Failed to fetch default network configuration for model code: $model_code from Github. Please check & try again... Exiting" >&2
+        echo "**ERROR** : Failed to fetch default network configuration for model code: $model_code from Github. Please check & try again... Exiting" >&1
         failure=1
         exit 1
     fi
@@ -291,14 +296,15 @@ echo "===> Restarting Firewall Service ..."
 echo "===> Setting up root user password ..."
 root_user=$(jsonfilter -i config.json -e @.device.root_user)
 root_password=$(jsonfilter -i config.json -e @.device.root_password)
-echo "root:$root_password" | chpasswd
+# Todo : remove the below line before deploying to production
+#echo "root:$root_password" | chpasswd
 echo -e "$root_password\n$root_password" | passwd $root_user
 
 
 admin_username=$(jsonfilter -i config.json -e @.device.admin_username)
 echo "===> Setting up non-root user $admin_username ..."
 admin_password=$(jsonfilter -i config.json -e @.device.admin_password)
-useradd -m -s /bin/ash $admin_username
+useradd -m -s /bin/ash $admin_username  >&1
 echo -e "$admin_password\n$admin_password" | passwd $admin_username
 
 }
@@ -315,7 +321,7 @@ mwan3_and_notificatio_setup() {
     echo "===> Setting up MWAN3 ..."
     curl -s -o /etc/config/mwan3 https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/mwan3/mwan3
     if [ $? -ne 0 ]; then
-        echo "**ERROR** : Failed to fetch default mwan3 configuration from Github. Please check & try again... Exiting" >&2
+        echo "**ERROR** : Failed to fetch default mwan3 configuration from Github. Please check & try again... Exiting" >&1
         failure=1
         exit 1
     fi
@@ -324,7 +330,7 @@ mwan3_and_notificatio_setup() {
     echo "===> Setting up MWAN3 Notification Action ..."
     curl -s -o /etc/mwan3.user https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/mwan3/mwan3.user
     if [ $? -ne 0 ]; then
-        echo "**ERROR** : Failed to fetch default mwan3.user configuration from Github. Please check & try again... Exiting" >&2
+        echo "**ERROR** : Failed to fetch default mwan3.user configuration from Github. Please check & try again... Exiting" >&1
         failure=1
         exit 1
     fi
@@ -348,13 +354,13 @@ mwan3_and_notificatio_setup() {
     uci commit scogo
 
     echo "===> Setting up Notifications ..."
-    notification_service_endpoint=$(uci get scogo.@notification[0].notification_service_endpoint)
+    notification_service_endpoint=$(uci get scogo.@notification[0].notification_service_endpoint | tr '[A-Z]' '[a-z]')
     # Todo : Uncomment the below line before deploying to production, when authenticaion for notification service is enabled
     #notification_service_auth_key=$(uci get scogo.@notification[0].notification_service_auth_key)
     notification_topic=$(uci get scogo.@notification[0].notification_topic)
 
     echo "===> Creating Notification Topic ..."
-    response_code=$(curl -s -o /dev/null -w "%{http_code}" --location $notification_service_endpoint \
+    response_code=$(curl -s -o /dev/null -w "%{http_code}" --location $notification_service_endpoint/v1/topics \
     --header 'Content-Type: application/json' \
     --data '{
         "key": "'"$notification_topic"'",
@@ -366,7 +372,7 @@ mwan3_and_notificatio_setup() {
     elif [ $response_code -eq 409 ]; then
         echo ">> Notification Topic $notification_topic already exists"
     else
-        echo "**ERROR** : Failed to create Notification Topic. Please check & try again... Exiting" >&2
+        echo "**ERROR** : Error Code: $response_code, Failed to create Notification Topic. Please check & try again... Exiting" >&1
         failure=1
         exit 1
     fi
@@ -598,7 +604,7 @@ echo "===> Registering a new device based on device template ..."
 curl -s --location "https://api.golain.io/core/api/v1/projects/$project_id/fleets/$fleet_id/devices/bulk" \
 --header "ORG-ID: $org_id" \
 --header "Content-Type: application/json" \
---header "Authorization: APIKEY $api_key" \
+--header "Authorization: $api_key" \
 --data '{
     "device_count": 1,
     "fleet_device_template_id": "'"$fleet_device_template_id"'",
@@ -609,6 +615,7 @@ curl -s --location "https://api.golain.io/core/api/v1/projects/$project_id/fleet
 status=$(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e @.ok)
 if [ "$status" != "1" ]; then
     echo ">> Error : Failed to register the device. Reason: $(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e @.message)"
+    echo ">> For more details check /usr/lib/thornol/device_registration_response.json file... Exiting"
     exit 1
 fi
 
@@ -620,7 +627,7 @@ device_id=$(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e 
 curl -s "https://api.golain.io/core/api/v1/projects/$project_id/fleets/$fleet_id/devices/$device_id/shadow" \
 --header "ORG-ID: $org_id" \
 --header "Content-Type: application/json" \
---header "Authorization: APIKEY $api_key" \
+--header "Authorization: $api_key" \
 --data-raw '{"shadow":{"ifaces":[],"interfacesToRead":["lan1","lan2","lan3","lan4","phy0-ap0","phy1-ap0"],"lanMappings":["lan3","lan4","phy0-ap0","phy1-ap0"],"speedTestStatus":"UNKNOWN","uptime":0,"wan1Mapping":"lan1","wan2Mapping":"lan2","wifi5Mapping":"phy1-ap0","wifiMapping":"phy0-ap0"}}' > /usr/lib/thornol/shadow_config_setup_response.json
 }
 
@@ -637,7 +644,7 @@ echo "===> Provisioning new certificates for the device ..."
 curl -s --location 'https://api.golain.io/core/api/v1/projects/'"$project_id"'/fleets/'"$fleet_id"'/devices/'"$device_id"'/certificates' \
 --header 'ORG-ID: '"$org_id"'' \
 --header 'Content-Type: application/json' \
---header 'Authorization: APIKEY '"$api_key"'' \
+--header 'Authorization: '"$api_key"'' \
 --data '{}' > /usr/lib/thornol/device_certificate_response.json
 } 
 
@@ -651,18 +658,20 @@ json_get_var connection_settings "connection_settings.json"
 echo "$connection_settings" | base64 -d > /usr/lib/thornol/connection_settings.json
 # Extract and decode device certificate
 json_get_var device_cert "device_cert.pem"
-echo "$device_cert" | base64 -d > /usr/lib/thornol/certs/device_cert.pem &> /dev/null
+echo "$device_cert" | base64 -d > /usr/lib/thornol/certs/device_cert.pem
 # Extract and decode device private key
 json_get_var device_private_key "device_private_key.pem"
-echo "$device_private_key" | base64 -d > /usr/lib/thornol/certs/device_private_key.pem &> /dev/null
+echo "$device_private_key" | base64 -d > /usr/lib/thornol/certs/device_private_key.pem
 # Extract and decode root CA certificate
 json_get_var root_ca_cert "root_ca_cert.pem"
-echo "$root_ca_cert" | base64 -d > /usr/lib/thornol/certs/root_ca_cert.pem &> /dev/null
+echo "$root_ca_cert" | base64 -d > /usr/lib/thornol/certs/root_ca_cert.pem
 }
 
 apply_device_tags(){
+    echo "===> Applying device tags to the device ..."
     # get the device tags from config.json
     device_tags=$(jq -c '.device.device_tags' config.json)
+    echo "Found device tags: $device_tags"
     # if the device tags are not empty
     if [ ! -z "$device_tags" ]; then
         # if the device id is not empty
@@ -673,7 +682,7 @@ apply_device_tags(){
             curl -s --location 'https://api.golain.io/core/api/v1/projects/'"$project_id"'/fleets/'"$fleet_id"'/devices/'"$device_id"'/tags_by_name' \
             --header "ORG-ID: $org_id" \
             --header "Content-Type: application/json" \
-            --header "Authorization: APIKEY $api_key" \
+            --header "Authorization: $api_key" \
             --data "$json_payload" > /usr/lib/thornol/device_tags_response.json
 
             # check if the response is successful based on json file
@@ -738,6 +747,7 @@ if [ ! -f /usr/lib/thornol/device_registration_response.json ] || [ "$(jsonfilte
     if [ ! -f /usr/lib/thornol/connection_settings.json ]; then
         create_new_device
         setup_shadow_config_values
+        apply_device_tags
     fi
 fi
 
@@ -773,9 +783,9 @@ cleanup() {
     echo "Cleaning up ..."
     echo "==============="
 
-    ## Opkg remove jq and jsonfilter
-    echo "===> Removing coreutils-base64 jsonfilter jq package ..."
-    opkg remove coreutils-base64 jsonfilter jq --force-depends
+    ## Opkg remove jq and
+    echo "===> Removing coreutils-base64 jq package ..."
+    opkg remove coreutils-base64 jq --force-depends
 }
 
 ################
@@ -783,40 +793,99 @@ cleanup() {
 ################
 
 main() {
-    
-    if [ ! -f config.json ]; then
-        echo "**ERROR** : config.json file not found in current working directory. Please create the file and try again." >&2
-        exit 1
-    fi
-    
-    echo "******************************************"
-    echo "Scogo Edge Router All-in-One Setup Script"
-    echo "******************************************"
-    echo
 
-    prerequisites_setup
-    if [ $failure -eq 1 ]; then
-        echo "**ERROR** : Failed to setup prerequisites. Please check & try again... Exiting" >&2
-        exit 1
-    fi
+    logfile="ser-setup-log-$(date '+%Y%m%d-%H%M%S').log"
 
-    operating_system_setup
-    if [ $failure -eq 1 ]; then
-        echo "**ERROR** : Failed to setup operating system. Please check & try again... Exiting" >&2
-        exit 1
-    fi
+    {
 
-    mwan3_and_notificatio_setup
-    if [ $failure -eq 1 ]; then
-        echo "**ERROR** : Failed to setup MWAN3 & Notification. Please check & try again... Exiting" >&2
-        exit 1
-    fi
+        if [ ! -f config.json ]; then
+            echo "**ERROR** : config.json file not found in current working directory. Please create the file and try again." >&1
+            exit 1
+        fi
 
-    rathole_setup
-    rutty_setup
-    thornol_setup
-    apply_device_tags
-    cleanup
+        echo "******************************************"
+        echo "Scogo Edge Router All-in-One Setup Script"
+        echo "Log file path : $logfile"
+        echo "******************************************"
+        echo
+
+        prerequisites_setup
+        if [ $failure -eq 1 ]; then
+            echo "**ERROR** : Failed to setup prerequisites. Please check & try again... Exiting" >&1
+            exit 1
+        fi
+
+        operating_system_setup
+        if [ $failure -eq 1 ]; then
+            echo "**ERROR** : Failed to setup operating system. Please check & try again... Exiting" >&1
+            exit 1
+        fi
+
+        mwan3_and_notificatio_setup
+        if [ $failure -eq 1 ]; then
+            echo "**ERROR** : Failed to setup MWAN3 & Notification. Please check & try again... Exiting" >&1
+            exit 1
+        fi
+
+        rathole_setup
+        rutty_setup
+        thornol_setup
+        cleanup
+
+    } | tee "/tmp/$logfile" >&1
+
+        echo "*********************************************"
+        echo "Script finished. Check /tmp/$logfile for details."
+        echo "*********************************************"
+        echo "##### Important #######"
+        echo "Please restart the device to apply the changes"
+        echo "########################"
+
+    # access_key_id=$1
+    # secret_access_key=$2
+    # bucket_name="ser-installaion-logs"
+    # region="ap-south-1"
+    # endpoint="s3.${region}.amazonaws.com"
+
+    # # Object key (filename) within the bucket
+    # # object_key="/tmp/$logfile"  # Create a folder structure with date
+
+    # # Construct the upload URL with placeholders for signature and date
+    # upload_url="https://${bucket_name}.${endpoint}/${logfile}"
+
+    # # Generate the authorization signature (not recommended to embed secret key directly)
+    # timestamp=$(date -R)  # Get current date in RFC 2822 format
+
+    # # This is a simplified example using SHA1 (AWS recommends using SigV4)
+    # # Refer to AWS documentation for secure signature generation: https://www.amazon.com/gp/help/customer/display.html?nodeId=GRGL3L4SXX29V2ZR
+
+    # string_to_sign="PUT\n\n\n${timestamp}\n/s3/${bucket_name}/${object_key}"
+
+    # signature=$(echo -n "${string_to_sign}" | openssl sha1 -hmac "${secret_access_key}" | sed 's/.*=//')
+
+    # # Construct the cURL command
+    # curl_command="curl -X PUT -T ${logfile} \
+    # -H \"Authorization: AWS ${access_key_id}:${signature}\" \
+    # -H \"Content-Type: application/octet-stream\" \
+    # -H \"Date: ${timestamp}\" \
+    # ${upload_url}"
+
+    # # Execute the cURL command and handle errors
+    # response=$(eval "${curl_command}")
+
+    # if [ $? -eq 0 ]; then
+    # echo "Log file uploaded successfully to S3!"
+    # else
+    #     echo "Error uploading log file: $response"
+    # # Handle errors (e.g., retry logic, send notification)
+    # fi
+
+    # # Your commands here (output and errors will be captured in the log file and uploaded to S3)
+    # command1
+    # command2
+    # # ...
+
+    # echo "Script finished. Check S3 bucket for log details."
 
 }
 
