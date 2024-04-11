@@ -779,8 +779,8 @@ upload_log_file() {
     ## Upload the log file to scogo asset inventory against the device serial number
     echo "===> Uploading log file to Scogo Asset Inventory ..."
     asset_file_upload_endpoint="https://ydzkg5tj55.execute-api.ap-south-1.amazonaws.com/prod/api/webhooks/assets/config"
-    serial_number="96E6480F"
-    logfile="lastlog"
+    serial_number=$(uci get scogo.@device[0].serial_number | tr '[A-Z]' '[a-z]')
+    #logfile="lastlog"
     # convert the log file to base64
     base64_logfile=$(base64 -w 0 "/tmp/$logfile")
     # Create a payload for the API request that should include the "serial_number": "serial number", "mime_type": "application/json", "file": filebase64 encoded log file
@@ -794,12 +794,12 @@ upload_log_file() {
     response_message=$(jsonfilter -i /tmp/upload_log_file_response.json -e @.data.message)
 
     ## check if the response code is 200 and if not, write the error to stderr including the response code and message from the API and exit
-    if [ $response_code -ne 200 ]; then
+    if [ $response_code -eq 200 ]; then
+        echo ">> Log file uploaded successfully to Scogo Asset Inventory"
+        #echo ">> Response Code: $response_code , Message: $response_message"
+    else
         echo "**ERROR** : Failed to upload log file to Scogo Asset Inventory. Error Code: $response_code, Message: $response_message Please check & try again... Exiting" >&1
         exit 1
-    else
-        echo ">> Log file uploaded successfully to Scogo Asset Inventory"
-        echo ">> Response Code: $response_code , Message: $response_message"
     fi
 
 }
@@ -849,8 +849,11 @@ main() {
 
         ## Upload the config.json file to scogo asset inventory against the device serial number
         echo "===> Uploading config.json file to Scogo Asset Inventory ..."
+        asset_file_upload_endpoint="https://ydzkg5tj55.execute-api.ap-south-1.amazonaws.com/prod/api/webhooks/assets/config"
+        serial_number=$(uci get scogo.@device[0].serial_number | tr '[A-Z]' '[a-z]')
+        #logfile="lastlog"
         # convert the config.json file to base64
-        base64_configfile=$(base64 -w 0 "config.json")
+        base64_configfile=$(base64 -w 0 "/root/config.json")
         # Create a payload for the API request that should include the "serial_number": "serial number", "mime_type": "application/json", "file": filebase64 encoded config.json file
         payload='{"serial_number": "'"$serial_number"'", "mime_type": "application/json", "file": "'"$base64_configfile"'", "action": "device_config_file"}'
         # Send the payload to the API endpoint in --data option , add the endpoint in --location option , add the headers in --header option the headers should include the content type as application/json
@@ -859,17 +862,17 @@ main() {
         --data "$payload")
     
         ## check if the response code is 200 and if not, write the error to stderr including the response code and message from the API and exit
-        if [ $response_code -ne 200 ]; then
-            echo "**ERROR** : Failed to upload config.json file to Scogo Asset Inventory. Error Code: $response_code. Please check & try again... Exiting" >&1
-            exit 1
-        else
+        if [ $response_code -eq 200 ]; then
             echo ">> Config file uploaded successfully to Scogo Asset Inventory"
+        else
+            echo "**ERROR** : Failed to upload /root/config.json file to Scogo Asset Inventory. Error Code: $response_code. Please check & try again... Exiting" >&1
+            exit 1
         fi
 
     } | tee "/tmp/$logfile" >&1
 
     upload_log_file
-    
+
     echo "*****************************************************"
     echo "Setup Completed ... Check /tmp/$logfile for details."
     echo "*****************************************************"
