@@ -12,6 +12,7 @@
 # Delete Old Device #
 #####################
 delete_device(){
+    echo "===> Deleting the device from store..."
     # check if the device is registered
     if [ -f /usr/lib/thornol/device_registration_response.json ]; then
         # if the device is registered, extract the device id
@@ -19,11 +20,10 @@ delete_device(){
         # if the device id is not empty
         if [ ! -z "$device_id" ]; then
             # delete the device
-            echo "===> Deleting the device ..."
-            curl -s --location 'https://api.golain.io/core/api/v1/projects/'"$project_id"'/fleets/'"$fleet_id"'/devices/'"$device_id" \
+            curl -s --location 'https://api.golain.io/core/api/v1/projects/'"$store_project_id"'/fleets/'"$store_fleet_id"'/devices/'"$device_id" \
             --header "ORG-ID: $org_id" \
             --header "Content-Type: application/json" \
-            --header "Authorization: APIKEY $api_key" \
+            --header "Authorization: $api_key" \
             --request DELETE > /usr/lib/thornol/device_deletion_response.json
 
             # check if the response is successful based on json file
@@ -68,6 +68,8 @@ api_key=$(uci get scogo.@infrastructure[0].golain_api_key)
 device_name=$(uci get scogo.@device[0].serial_number | tr '[A-Z]' '[a-z]')
 org_id=$(uci get scogo.@infrastructure[0].golain_org_id)
 # get these from migrate.json
+store_project_id=$(jq -r '.store_project_id' migrate.json)
+store_fleet_id=$(jq -r '.store_fleet_id' migrate.json)
 project_id=$(jq -r '.project_id' migrate.json)
 fleet_id=$(jq -r '.fleet_id' migrate.json)
 fleet_device_template_id=$(jq -r '.fleet_device_template_id' migrate.json)
@@ -100,7 +102,7 @@ echo "===> Registering a new device based on device template ..."
 curl -s --location "https://api.golain.io/core/api/v1/projects/$project_id/fleets/$fleet_id/devices/bulk" \
 --header "ORG-ID: $org_id" \
 --header "Content-Type: application/json" \
---header "Authorization: APIKEY $api_key" \
+--header "Authorization: $api_key" \
 --data '{
     "device_count": 1,
     "fleet_device_template_id": "'"$fleet_device_template_id"'",
@@ -122,7 +124,7 @@ device_id=$(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e 
 curl -s "https://api.golain.io/core/api/v1/projects/$project_id/fleets/$fleet_id/devices/$device_id/shadow" \
 --header "ORG-ID: $org_id" \
 --header "Content-Type: application/json" \
---header "Authorization: APIKEY $api_key" \
+--header "Authorization: $api_key" \
 --data-raw '{"shadow":{"ifaces":[],"interfacesToRead":["lan1","lan2","lan3","lan4","phy0-ap0","phy1-ap0"],"lanMappings":["lan3","lan4","phy0-ap0","phy1-ap0"],"speedTestStatus":"UNKNOWN","uptime":0,"wan1Mapping":"lan1","wan2Mapping":"lan2","wifi5Mapping":"phy1-ap0","wifiMapping":"phy0-ap0"}}' > /usr/lib/thornol/shadow_config_setup_response.json
 }
 
@@ -139,7 +141,7 @@ echo "===> Provisioning new certificates for the device ..."
 curl -s --location 'https://api.golain.io/core/api/v1/projects/'"$project_id"'/fleets/'"$fleet_id"'/devices/'"$device_id"'/certificates' \
 --header 'ORG-ID: '"$org_id"'' \
 --header 'Content-Type: application/json' \
---header 'Authorization: APIKEY '"$api_key"'' \
+--header 'Authorization: '"$api_key"'' \
 --data '{}' > /usr/lib/thornol/device_certificate_response.json
 } 
 
@@ -163,8 +165,10 @@ echo "$root_ca_cert" | base64 -d > /usr/lib/thornol/certs/root_ca_cert.pem &> /d
 }
 
 apply_device_tags(){
-    # get the device tags from the migrate.json file
-    device_tags=$(jq -c '.device.device_tags' migrate.json)
+    echo "===> Applying device tags to the device ..."
+    # get the device tags from config.json
+    device_tags=$(jq -c '.device.device_tags' config.json)
+    echo "Found device tags: $device_tags"
     # if the device tags are not empty
     if [ ! -z "$device_tags" ]; then
         # if the device id is not empty
@@ -175,7 +179,7 @@ apply_device_tags(){
             curl -s --location 'https://api.golain.io/core/api/v1/projects/'"$project_id"'/fleets/'"$fleet_id"'/devices/'"$device_id"'/tags_by_name' \
             --header "ORG-ID: $org_id" \
             --header "Content-Type: application/json" \
-            --header "Authorization: APIKEY $api_key" \
+            --header "Authorization: $api_key" \
             --data "$json_payload" > /usr/lib/thornol/device_tags_response.json
 
             # check if the response is successful based on json file
@@ -285,6 +289,10 @@ cleanup() {
 ################
 
 main() {
+    echo "******************************************"
+    echo "          Starting Migration              "
+    echo "******************************************"
+
     
     if [ ! -f migrate.json ]; then
         echo "**ERROR** : migrate.json file not found in current working directory. Please create the file and try again." >&2
@@ -295,6 +303,10 @@ main() {
     thornol_setup
     apply_device_tags
     cleanup
+
+    echo "*****************************************************"
+    echo "              Migration Complete                     "
+    echo "*****************************************************"
 
 }
 
