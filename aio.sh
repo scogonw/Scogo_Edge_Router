@@ -46,7 +46,6 @@ if ! ping -c 1 google.com &> /dev/null
 then
     echo "**ERROR** : Internet is not available. Please check the internet connection and try again.. Exiting" >&1
     failure=1
-    upload_log_file
     exit 1
 fi
 
@@ -55,7 +54,6 @@ if ! command -v opkg &> /dev/null
 then
     echo "**ERROR** : opkg is not installed. Please install opkg and try again... Exiting" >&1
     failure=1
-    upload_log_file
     exit 1
 fi
 
@@ -76,7 +74,6 @@ then
     if [ $? -ne 0 ]; then
         echo "**ERROR** : Failed to install curl, jsonfilter, jq, coreutils-base64, mwan3, luci-app-mwan3 packages. Please try again... Exiting" >&1
         failure=1
-        upload_log_file
         exit 1
     fi
 fi
@@ -100,7 +97,6 @@ curl -s -o /etc/config/scogo https://raw.githubusercontent.com/scogonw/Scogo_Edg
 if [ $? -ne 0 ]; then
     echo "**ERROR** : Failed to fetch default UCI configuration for scogo from Github. Please check & try again... Exiting" >&1
     failure=1
-    upload_log_file
     exit 1
 fi
 
@@ -113,7 +109,6 @@ if [ -n "$model_code" ]; then
         if [ $? -ne 0 ]; then
             echo "**ERROR** : Failed to fetch https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/config/banner_${model_code} file from Github. Please check & try again... Exiting" >&1
             failure=1
-            upload_log_file
             exit 1
 fi
 else
@@ -276,12 +271,10 @@ if [ "$model_code" == "C6UT" ]; then
     if [ $? -ne 0 ]; then
         echo "**ERROR** : Failed to fetch default network configuration for model code: $model_code from Github. Please check & try again... Exiting" >&1
         failure=1
-        upload_log_file
         exit 1
     fi
 else
     echo "**ERROR** : Incorrect model code $model_code in config.json ... exiting"
-    upload_log_file
     exit 1
 fi
 
@@ -344,7 +337,6 @@ mwan3_and_notificatio_setup() {
     if [ $? -ne 0 ]; then
         echo "**ERROR** : Failed to fetch default mwan3 configuration from Github. Please check & try again... Exiting" >&1
         failure=1
-        upload_log_file
         exit 1
     fi
     service mwan3 restart
@@ -354,7 +346,6 @@ mwan3_and_notificatio_setup() {
     if [ $? -ne 0 ]; then
         echo "**ERROR** : Failed to fetch default mwan3.user configuration from Github. Please check & try again... Exiting" >&1
         failure=1
-        upload_log_file
         exit 1
     fi
 
@@ -397,7 +388,6 @@ mwan3_and_notificatio_setup() {
     else
         echo "**ERROR** : Error Code: $response_code, Failed to create Notification Topic. Please check & try again... Exiting" >&1
         failure=1
-        upload_log_file
         exit 1
     fi
 
@@ -603,7 +593,6 @@ fleet_device_template_id=$(uci get scogo.@infrastructure[0].golain_fleet_device_
 # Check if all the variables are set, if not exit
 if [ -z "$api_key" ] || [ -z "$device_name" ] || [ -z "$project_id" ] || [ -z "$org_id" ] || [ -z "$fleet_id" ] || [ -z "$fleet_device_template_id" ]; then
     echo ">> Error : One or more variables are not set...Exiting"
-    upload_log_file
     exit 1
 fi
 
@@ -641,7 +630,6 @@ status=$(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e @.o
 if [ "$status" != "1" ]; then
     echo ">> Error : Failed to register the device. Reason: $(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e @.message)"
     echo ">> For more details check /usr/lib/thornol/device_registration_response.json file... Exiting"
-    upload_log_file
     exit 1
 fi
 
@@ -663,7 +651,6 @@ device_id=$(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e 
 # Ensure api_key and device_name are defined
 if [ -z "$device_id" ]; then
     echo ">> Error : device_id is not set... Exiting"
-    upload_log_file
     exit 1
 fi
 # Provision new certificates for the device and decode the response from base64
@@ -829,7 +816,6 @@ main() {
 
         if [ ! -f config.json ]; then
             echo "**ERROR** : config.json file not found in current working directory. Please create the file and try again." >&1
-            upload_log_file
             exit 1
         fi
 
@@ -842,21 +828,18 @@ main() {
         prerequisites_setup
         if [ $failure -eq 1 ]; then
             echo "**ERROR** : Failed to setup prerequisites. Please check & try again... Exiting" >&1
-            upload_log_file
             exit 1
         fi
 
         operating_system_setup
         if [ $failure -eq 1 ]; then
             echo "**ERROR** : Failed to setup operating system. Please check & try again... Exiting" >&1
-            upload_log_file
             exit 1
         fi
 
         mwan3_and_notificatio_setup
         if [ $failure -eq 1 ]; then
             echo "**ERROR** : Failed to setup MWAN3 & Notification. Please check & try again... Exiting" >&1
-            upload_log_file
             exit 1
         fi
 
@@ -878,7 +861,6 @@ main() {
         ## check if the response code is 200 and if not, write the error to stderr including the response code and message from the API and exit
         if [ $response_code -ne 200 ]; then
             echo "**ERROR** : Failed to upload config.json file to Scogo Asset Inventory. Error Code: $response_code. Please check & try again... Exiting" >&1
-            upload_log_file
             exit 1
         else
             echo ">> Config file uploaded successfully to Scogo Asset Inventory"
@@ -886,6 +868,8 @@ main() {
 
     } | tee "/tmp/$logfile" >&1
 
+    upload_log_file
+    
     echo "*****************************************************"
     echo "Setup Completed ... Check /tmp/$logfile for details."
     echo "*****************************************************"
