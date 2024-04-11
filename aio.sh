@@ -26,8 +26,14 @@
 #7 currently the topic for notification are created manually by keyur, we need to automate this by curling the API
 #8 Add k8s operator that monitors config map and restart the pods if there is any change in config map
 
-## Update as on 25 March
+## Update as on 3rd April (@IshanDaga)
 
+############################
+#      ChangeLog           #
+############################
+
+### 3-4-2024 @IshanDaga
+### - Added function to apply device tags by name
 
 ##########################
 # Prerequisites Setup    #
@@ -681,6 +687,153 @@ json_get_var root_ca_cert "root_ca_cert.pem"
 echo "$root_ca_cert" | base64 -d > /usr/lib/thornol/certs/root_ca_cert.pem
 }
 
+apply_device_tags(){
+    echo "===> Applying device tags to the device ..."
+    # get the device tags from config.json
+    device_tags=$(jq -c '.device.device_tags' config.json)
+    echo "Found device tags: $device_tags"
+    # if the device tags are not empty
+    if [ ! -z "$device_tags" ]; then
+        # if the device id is not empty
+        if [ ! -z "$device_id" ]; then
+            json_payload="{\"tag_names\":$device_tags}"
+            # apply the device tags to the device
+            echo "===> Applying device tags to the device ..."
+            curl -s --location 'https://api.golain.io/core/api/v1/projects/'"$project_id"'/fleets/'"$fleet_id"'/devices/'"$device_id"'/tags_by_name' \
+            --header "ORG-ID: $org_id" \
+            --header "Content-Type: application/json" \
+            --header "Authorization: $api_key" \
+            --data "$json_payload" > /usr/lib/thornol/device_tags_response.json
+
+            # check if the response is successful based on json file
+            status=$(jsonfilter -i /usr/lib/thornol/device_tags_response.json -e @.ok)
+            if [ "$status" != "1" ]; then
+                echo ">> Error : Failed to apply device tags to the device. Reason: $(jsonfilter -i /usr/lib/thornol/device_tags_response.json -e @.message)"
+                exit 1
+            fi
+        fi
+    fi
+}
+
+add_device_metadata(){
+    echo "===> Adding Metadata to the device ..."
+    # pickup relevant metadata from config.json
+    device_metadata='{
+    "device":
+        {
+            "serial_number": "'"$(uci get scogo.@device[0].serial_number)"'",
+            "hostname": "'"$(uci get scogo.@device[0].hostname)"'",
+            "make": "'"$(uci get scogo.@device[0].make)"'",
+            "model": "'"$(uci get scogo.@device[0].model)"'",
+            "model_code": "'"$(uci get scogo.@device[0].model_code)"'",
+            "part_code": "'"$(uci get scogo.@device[0].part_code)"'",
+            "asset_id": "'"$(uci get scogo.@device[0].asset_id)"'",
+            "asset_category": "'"$(uci get scogo.@device[0].asset_category)"'",
+            "asset_type": "'"$(uci get scogo.@device[0].asset_type)"'",
+            "license_key": "'"$(uci get scogo.@device[0].license_key)"'",
+            "enable_wifi": "'"$(uci get scogo.@device[0].enable_wifi)"'",
+            "wifi_ssid": "'"$(uci get scogo.@device[0].wifi_ssid)"'",
+            "wifi_ssid_password": "'"$(uci get scogo.@device[0].wifi_ssid_password)"'"
+        },
+        "link1":{
+            "nic": "'"$(uci get scogo.@link1[0].nic)"'",
+            "interface": "'"$(uci get scogo.@link1[0].interface)"'",
+            "static_ip_available": "'"$(uci get scogo.@link1[0].static_ip_available)"'",
+            "static_ip": "'"$(uci get scogo.@link1[0].static_ip)"'",
+            "isp_name": "'"$(uci get scogo.@link1[0].isp_name)"'",
+            "isp_plan_name": "'"$(uci get scogo.@link1[0].isp_plan_name)"'",
+            "isp_backhaul_name": "'"$(uci get scogo.@link1[0].isp_backhaul_name)"'",
+            "isp_spoc_name": "'"$(uci get scogo.@link1[0].isp_spoc_name)"'",
+            "isp_spoc_number": "'"$(uci get scogo.@link1[0].isp_spoc_number)"'",
+            "isp_spoc_email": "'"$(uci get scogo.@link1[0].isp_spoc_email)"'"
+        },
+        "link2":{
+            "nic": "'"$(uci get scogo.@link2[0].nic)"'",
+            "interface": "'"$(uci get scogo.@link2[0].interface)"'",
+            "static_ip_available": "'"$(uci get scogo.@link2[0].static_ip_available)"'",
+            "static_ip": "'"$(uci get scogo.@link2[0].static_ip)"'",
+            "isp_name": "'"$(uci get scogo.@link2[0].isp_name)"'",
+            "isp_plan_name": "'"$(uci get scogo.@link2[0].isp_plan_name)"'",
+            "isp_backhaul_name": "'"$(uci get scogo.@link2[0].isp_backhaul_name)"'",
+            "isp_spoc_name": "'"$(uci get scogo.@link2[0].isp_spoc_name)"'",
+            "isp_spoc_number": "'"$(uci get scogo.@link2[0].isp_spoc_number)"'",
+            "isp_spoc_email": "'"$(uci get scogo.@link2[0].isp_spoc_email)"'"
+        },
+        "site": {
+            "customer_name": "'"$(uci get scogo.@site[0].customer_name)"'",
+            "customer_spoc_name": "'"$(uci get scogo.@site[0].customer_spoc_name)"'",
+            "customer_spoc_contact_number": "'"$(uci get scogo.@site[0].customer_spoc_contact_number)"'",
+            "customer_spoc_email_address": "'"$(uci get scogo.@site[0].customer_spoc_email_address)"'",
+            "device_installation_address": "'"$(uci get scogo.@site[0].device_installation_address)"'",
+            "device_latitude_longitude": "'"$(uci get scogo.@site[0].device_latitude_longitude)"'",
+            "device_gmaps_plus_code": "'"$(uci get scogo.@site[0].device_gmaps_plus_code)"'",
+            "end_customer_name": "'"$(uci get scogo.@site[0].end_customer_name)"'",
+            "end_customer_spoc_name": "'"$(uci get scogo.@site[0].end_customer_spoc_name)"'",
+            "end_customer_spoc_contact_number": "'"$(uci get scogo.@site[0].end_customer_spoc_contact_number)"'",
+            "end_customer_spoc_email_address": "'"$(uci get scogo.@site[0].end_customer_spoc_email_address)"'"
+        },
+        "notification": {
+            "admin_notification_topic": "'"$(uci get scogo.@notification[0].admin_notification_topic)"'",
+            "all_notification_topic": "'"$(uci get scogo.@notification[0].all_notification_topic)"'",
+            "link_down_notification_workflow": "'"$(uci get scogo.@notification[0].link_down_notification_workflow)"'",
+            "link_up_notification_workflow": "'"$(uci get scogo.@notification[0].link_up_notification_workflow)"'",
+            "device_power_down_notification_workflow": "'"$(uci get scogo.@notification[0].device_power_down_notification_workflow)"'",
+            "generic_workflow": "'"$(uci get scogo.@notification[0].generic_workflow)"'"
+        }
+    }'
+    # if metadata is not empty
+    if [ ! -z "$device_metadata" ]; then
+        # if the device id is not empty
+        if [ ! -z "$device_id" ]; then
+            # apply the device metadata to the device
+            echo "===> Adding metadata to the device ..."
+            curl -s 'https://api.golain.io/core/api/v1/projects/'"$project_id"'/fleets/'"$fleet_id"'/devices/'"$device_id"'/meta' \
+            --header "ORG-ID: $org_id" \
+            --header "Content-Type: application/json" \
+            --header "Authorization: $api_key" \
+            --method PATCH \
+            --data "$device_metadata" > /usr/lib/thornol/device_metadata_response.json
+
+            # check if the response is successful based on json file
+            status=$(jsonfilter -i /usr/lib/thornol/device_metadata_response.json -e @.ok)
+            if [ "$status" != "1" ]; then
+                echo ">> Error : Failed to add device metadata to the device. Reason: $(jsonfilter -i /usr/lib/thornol/device_metadata_response.json -e @.message)"
+                exit 1
+            fi
+        fi
+    fi
+}
+
+add_device_location(){
+    echo "===> Adding Metadata to the device ..."
+    #get the device location from config.json
+    location_string=$(uci get scogo.@site[0].device_latitude_longitude)
+    latitude=$(echo $location_string | cut -d, -f1)
+    longitude=$(echo $location_string | cut -d, -f2)
+    # if locations are not empty
+    if [ ! -z "$latitude" ] && [ ! -z "$longitude" ]; then
+        # if the device id is not empty
+        if [ ! -z "$device_id" ]; then
+            json_payload="{\"location\":{\"latitude\":$latitude,\"longitude\":$longitude}"
+            # apply the device tags to the device
+            echo "===> Applying device tags to the device ..."
+            curl -s 'https://api.golain.io/core/api/v1/projects/'"$project_id"'/fleets/'"$fleet_id"'/devices/'"$device_id"'/location' \
+            --header "ORG-ID: $org_id" \
+            --header "Content-Type: application/json" \
+            --header "Authorization: $api_key" \
+            --method PATCH \
+            --data "$json_payload" > /usr/lib/thornol/device_location_response.json
+
+            # check if the response is successful based on json file
+            status=$(jsonfilter -i /usr/lib/thornol/device_location_response.json -e @.ok)
+            if [ "$status" != "1" ]; then
+                echo ">> Error : Failed to set device location. Reason: $(jsonfilter -i /usr/lib/thornol/device_location_response.json -e @.message)"
+                exit 1
+            fi
+        fi
+    fi
+}
+
 create_initd_service() {
 # Create a init.d service for the binary
 echo "===> Setting up /etc/init.d/thornol service file for Thornol ..."
@@ -733,6 +886,7 @@ if [ ! -f /usr/lib/thornol/device_registration_response.json ] || [ "$(jsonfilte
     if [ ! -f /usr/lib/thornol/connection_settings.json ]; then
         create_new_device
         setup_shadow_config_values
+        apply_device_tags
     fi
 fi
 
@@ -750,6 +904,8 @@ if [ ! -f /usr/lib/thornol/certs/device_private_key.pem ]; then
 fi
 
 download_thornol_binary
+add_device_metadata
+add_device_location
 
 # if the init.d service does not exist, create it
 if [ ! -f /etc/init.d/thornol ]; then
