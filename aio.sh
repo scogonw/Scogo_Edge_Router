@@ -754,11 +754,10 @@ add_device_location(){
             json_payload="{\"location\":{\"latitude\":$latitude,\"longitude\":$longitude}"
             # apply the device tags to the device
             echo "===> Updating Device Location Metadata ..."
-            curl -s 'https://api.golain.io/core/api/v1/projects/'"$project_id"'/fleets/'"$fleet_id"'/devices/'"$device_id"'/location' \
+            curl -s --location 'https://api.golain.io/core/api/v1/projects/'"$project_id"'/fleets/'"$fleet_id"'/devices/'"$device_id"'/location' \
             --header "ORG-ID: $org_id" \
             --header "Content-Type: application/json" \
             --header "Authorization: $api_key" \
-            --method PATCH \
             --data "$json_payload" > /usr/lib/thornol/device_location_response.json
 
             # check if the response is successful based on json file
