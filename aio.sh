@@ -691,7 +691,7 @@ apply_device_tags(){
     echo "===> Applying device tags to the device ..."
     # get the device tags from config.json
     device_tags=$(jq -c '.device.device_tags' config.json)
-    echo "Found device tags: $device_tags"
+    echo "===> Found device tags: $device_tags"
     # if the device tags are not empty
     if [ ! -z "$device_tags" ]; then
         # if the device id is not empty
@@ -718,79 +718,17 @@ apply_device_tags(){
 add_device_metadata(){
     echo "===> Fetching Device Metadata ..."
     # pickup relevant metadata from config.json
-    device_metadata='{
-    "device":
-        {
-            "serial_number": "'"$(uci get scogo.@device[0].serial_number)"'",
-            "hostname": "'"$(uci get scogo.@device[0].hostname)"'",
-            "make": "'"$(uci get scogo.@device[0].make)"'",
-            "model": "'"$(uci get scogo.@device[0].model)"'",
-            "model_code": "'"$(uci get scogo.@device[0].model_code)"'",
-            "part_code": "'"$(uci get scogo.@device[0].part_code)"'",
-            "asset_category": "'"$(uci get scogo.@device[0].asset_category)"'",
-            "asset_type": "'"$(uci get scogo.@device[0].asset_type)"'",
-            "license_key": "'"$(uci get scogo.@device[0].license_key)"'",
-            "configure_wifi": "'"$(uci get scogo.@device[0].configure_wifi)"'",
-            "wifi_ssid": "'"$(uci get scogo.@device[0].wifi_ssid)"'",
-            "wifi_ssid_password": "'"$(uci get scogo.@device[0].wifi_ssid_password)"'"
-        },
-        "link1":{
-            "nic": "'"$(uci get scogo.@link1[0].nic)"'",
-            "interface": "'"$(uci get scogo.@link1[0].interface)"'",
-            "static_ip_available": "'"$(uci get scogo.@link1[0].static_ip_available)"'",
-            "static_ip": "'"$(uci get scogo.@link1[0].static_ip)"'",
-            "isp_name": "'"$(uci get scogo.@link1[0].isp_name)"'",
-            "isp_plan_name": "'"$(uci get scogo.@link1[0].isp_plan_name)"'",
-            "isp_backhaul_name": "'"$(uci get scogo.@link1[0].isp_backhaul_name)"'",
-            "isp_spoc_name": "'"$(uci get scogo.@link1[0].isp_spoc_name)"'",
-            "isp_spoc_number": "'"$(uci get scogo.@link1[0].isp_spoc_number)"'",
-            "isp_spoc_email": "'"$(uci get scogo.@link1[0].isp_spoc_email)"'"
-        },
-        "link2":{
-            "nic": "'"$(uci get scogo.@link2[0].nic)"'",
-            "interface": "'"$(uci get scogo.@link2[0].interface)"'",
-            "static_ip_available": "'"$(uci get scogo.@link2[0].static_ip_available)"'",
-            "static_ip": "'"$(uci get scogo.@link2[0].static_ip)"'",
-            "isp_name": "'"$(uci get scogo.@link2[0].isp_name)"'",
-            "isp_plan_name": "'"$(uci get scogo.@link2[0].isp_plan_name)"'",
-            "isp_backhaul_name": "'"$(uci get scogo.@link2[0].isp_backhaul_name)"'",
-            "isp_spoc_name": "'"$(uci get scogo.@link2[0].isp_spoc_name)"'",
-            "isp_spoc_number": "'"$(uci get scogo.@link2[0].isp_spoc_number)"'",
-            "isp_spoc_email": "'"$(uci get scogo.@link2[0].isp_spoc_email)"'"
-        },
-        "site": {
-            "customer_name": "'"$(uci get scogo.@site[0].customer_name)"'",
-            "customer_spoc_name": "'"$(uci get scogo.@site[0].customer_spoc_name)"'",
-            "customer_spoc_contact_number": "'"$(uci get scogo.@site[0].customer_spoc_contact_number)"'",
-            "customer_spoc_email_address": "'"$(uci get scogo.@site[0].customer_spoc_email_address)"'",
-            "device_installation_address": "'"$(uci get scogo.@site[0].device_installation_address)"'",
-            "device_latitude_longitude": "'"$(uci get scogo.@site[0].device_latitude_longitude)"'",
-            "device_gmaps_plus_code": "'"$(uci get scogo.@site[0].device_gmaps_plus_code)"'",
-            "end_customer_name": "'"$(uci get scogo.@site[0].end_customer_name)"'",
-            "end_customer_spoc_name": "'"$(uci get scogo.@site[0].end_customer_spoc_name)"'",
-            "end_customer_spoc_contact_number": "'"$(uci get scogo.@site[0].end_customer_spoc_contact_number)"'",
-            "end_customer_spoc_email_address": "'"$(uci get scogo.@site[0].end_customer_spoc_email_address)"'"
-        },
-        "notification": {
-            "admin_notification_topic": "'"$(uci get scogo.@notification[0].admin_notification_topic)"'",
-            "all_notification_topic": "'"$(uci get scogo.@notification[0].all_notification_topic)"'",
-            "link_down_notification_workflow": "'"$(uci get scogo.@notification[0].link_down_notification_workflow)"'",
-            "link_up_notification_workflow": "'"$(uci get scogo.@notification[0].link_up_notification_workflow)"'",
-            "device_power_down_notification_workflow": "'"$(uci get scogo.@notification[0].device_power_down_notification_workflow)"'",
-            "generic_workflow": "'"$(uci get scogo.@notification[0].generic_workflow)"'"
-        }
-    }'
+    device_metadata=$(jq -c '{device, site, link1, link2, notification}' config.json)
     # if metadata is not empty
     if [ ! -z "$device_metadata" ]; then
         # if the device id is not empty
         if [ ! -z "$device_id" ]; then
             # apply the device metadata to the device
             echo "===> Adding metadata to the device ..."
-            curl -s 'https://api.golain.io/core/api/v1/projects/'"$project_id"'/fleets/'"$fleet_id"'/devices/'"$device_id"'/meta' \
+            curl -s --location 'https://api.golain.io/core/api/v1/projects/'"$project_id"'/fleets/'"$fleet_id"'/devices/'"$device_id"'/meta' \
             --header "ORG-ID: $org_id" \
             --header "Content-Type: application/json" \
             --header "Authorization: $api_key" \
-            --method PATCH \
             --data "$device_metadata" > /usr/lib/thornol/device_metadata_response.json
 
             # check if the response is successful based on json file
