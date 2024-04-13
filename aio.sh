@@ -690,7 +690,7 @@ echo "$root_ca_cert" | base64 -d > /usr/lib/thornol/certs/root_ca_cert.pem
 apply_device_tags(){
     echo "===> Applying device tags to the device ..."
     # get the device tags from config.json
-    device_tags=$(jq -c '.device.device_tags' config.json)
+    device_tags=$(jq -c '.device.tags' config.json)
     echo "===> Found device tags: $device_tags"
     # if the device tags are not empty
     if [ ! -z "$device_tags" ]; then
