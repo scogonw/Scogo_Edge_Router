@@ -74,11 +74,11 @@ opkg update
 #echo "==> Checking if curl and jsonfilter commands are available ..."
 if ! command -v curl &> /dev/null || ! command -v jsonfilter &> /dev/null || ! command -v jq &> /dev/null
 then
-    echo "==> Installing curl, jsonfilter, jq, coreutils-base64, mwan3, luci-app-mwan3 packages ..."
-    opkg install curl coreutils-base64 jsonfilter jq mwan3 luci-app-mwan3 iptables-nft
+    echo "==> Installing curl, jsonfilter, jq, coreutils-base64, mwan3, luci-app-mwan3, shadow-useradd packages ..."
+    opkg install curl coreutils-base64 jsonfilter jq mwan3 luci-app-mwan3 iptables-nft shadow-useradd
     # check if the installation was successful
     if [ $? -ne 0 ]; then
-        echo "**ERROR** : Failed to install curl, jsonfilter, jq, coreutils-base64, mwan3, luci-app-mwan3 packages. Please try again... Exiting" >&1
+        echo "**ERROR** : Failed to install packages... Exiting" >&1
         failure=1
         exit 1
     fi
@@ -316,16 +316,25 @@ echo "===> Restarting Firewall Service ..."
 echo "===> Setting up root user password ..."
 root_user=$(jsonfilter -i config.json -e @.device.root_user)
 root_password=$(jsonfilter -i config.json -e @.device.root_password)
-# Todo : remove the below line before deploying to production
-#echo "root:$root_password" | chpasswd
 echo -e "$root_password\n$root_password" | passwd $root_user
-
 
 admin_username=$(jsonfilter -i config.json -e @.device.admin_username)
 echo "===> Setting up non-root user $admin_username ..."
 admin_password=$(jsonfilter -i config.json -e @.device.admin_password)
 useradd -m -s /bin/ash $admin_username  >&1
 echo -e "$admin_password\n$admin_password" | passwd $admin_username
+
+echo ">> Configuring permissions for user $admin_username ..."
+chmod 0700 /sbin/uci
+chmod 0600 /etc/config/scogo
+
+uci add rpcd login
+uci set rpcd.@login[1].username="'${admin_username}'"
+uci set rpcd.@login[1].password="'$p${admin_password}'"
+uci set rpcd.@login[1].read='*'
+uci set rpcd.@login[1].write='*'
+uci commit rpcd
+
 
 }
 
@@ -428,6 +437,7 @@ type = "tcp"
 local_addr = "0.0.0.0:3000"
 nodelay = true
 EOF
+chmod 0600 /etc/config/rathole-client.toml
 
     echo "===> Creating /etc/init.d/rathole file ..."
 
@@ -863,7 +873,7 @@ cleanup() {
 
     ## Opkg remove jq and
     echo "===> Removing coreutils-base64 jq package ..."
-    opkg remove coreutils-base64 jq --force-depends
+    opkg remove coreutils-base64 jq shadow-useradd --force-depends
 }
 
 ## Upload Log file to Scogo Asset Inventory
