@@ -14,13 +14,12 @@ root@OpenWrt:~#
 - Karan: 
     - [ ] Fix DHCP warning issue (dhcp_option)
     - [ ] fix non root user creation issue
-
+    - [ ] Check if rathole and rutty installation and configuration can directly go into the Image. Such that upon resetting the device, it should revert back to original firmware image that should be remotely managed / configured. This could be a savior backdoor in case of failure, we can get the device resetted and take remote control.
+    - [ ] Check if rutty UI could be integrated in Argon/Luci theme, left bottom section as <Device Terminal>, this should be only visible to root user
 
 - Keyur : 
-    - [ ] Move all services to production 
     - [ ] discuss how notification service could be extended to push data over Webhooks or HTTP endpoint to create new service tickets on scogo platform or on 3rd party ticketing system 
     - [x] Provide notification endpoint to Ishan with correct payload format to send notifications to subscribers
-    - [ ] Upload log file to S3 and store it against right serial number in the database
 
 - Ishan: 
     - [x] Fix API key issue [Resolved in Discord]
