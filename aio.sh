@@ -751,7 +751,7 @@ add_device_location(){
     if [ ! -z "$latitude" ] && [ ! -z "$longitude" ]; then
         # if the device id is not empty
         if [ ! -z "$device_id" ]; then
-            json_payload="{\"location\":{\"latitude\":$latitude,\"longitude\":$longitude}"
+            json_payload="{\"location\":{\"latitude\":$latitude,\"longitude\":$longitude}}"
             # apply the device tags to the device
             echo "===> Updating Device Location Metadata ..."
             curl -s --location 'https://api.golain.io/core/api/v1/projects/'"$project_id"'/fleets/'"$fleet_id"'/devices/'"$device_id"'/location' \
