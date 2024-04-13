@@ -314,7 +314,7 @@ echo "===> Restarting Firewall Service ..."
 /etc/init.d/firewall reload
 
 echo "===> Setting up root user password ..."
-root_user=$(jsonfilter -i config.json -e @.device.root_user)
+root_user=$(jsonfilter -i config.json -e @.device.root_username)
 root_password=$(jsonfilter -i config.json -e @.device.root_password)
 echo -e "$root_password\n$root_password" | passwd $root_user
 
@@ -329,10 +329,10 @@ chmod 0700 /sbin/uci
 chmod 0600 /etc/config/scogo
 
 uci add rpcd login
-uci set rpcd.@login[1].username="'${admin_username}'"
-uci set rpcd.@login[1].password="'$p${admin_password}'"
-uci set rpcd.@login[1].read='*'
-uci set rpcd.@login[1].write='*'
+uci set rpcd.@login[1].username="${admin_username}"
+uci set rpcd.@login[1].password='$p$scogo'
+uci add_list rpcd.@login[1].read='*'
+uci add_list rpcd.@login[1].write='*'
 uci commit rpcd
 
 
