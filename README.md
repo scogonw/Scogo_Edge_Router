@@ -30,6 +30,7 @@ root@OpenWrt:~#
     - [x] Double check the submitted PR on aio.sh so that the tags defined in config.json should get auto-applied to devices at the time of registration [[#3](https://github.com/scogonw/Scogo_Edge_Router/pull/3)]
     - [x] Submit PR for device migration script from one fleet to another [[#3](https://github.com/scogonw/Scogo_Edge_Router/pull/3)]
     - [x] Add device location and device metadata calls to aio.sh and migrate.sh scripts [[#3](https://github.com/scogonw/Scogo_Edge_Router/pull/3)]
+    - [x] Migrations as part of `aio.sh` script. [[#11](https://github.com/scogonw/Scogo_Edge_Router/pull/11)]
     - [ ] Add scogo notification API to Golan's rule engine to send notifications to subscribers in case of device is offline with retries mechanisms
     - [ ] Possiblity of submitting remote commands to device and get output back from the device
 
@@ -55,41 +56,5 @@ Sit back and relax. The script will take care of the rest.
 
 
 # Scogo Edge Router Customer Provisioning / Migration
-Today on Golain, projects are seperated at the schema level. This means that each project has its own database schema. This is done to ensure that data is isolated and secure. This also means that each project has its own set of tables and data.
-
-The above makes it challenging to simply migrate / move one device from a project or fleet to another. This is because the device is tied to a specific schema and moving it to another project would mean that the device would need to be re-provisioned.
-
-The migration script would simply delete the device from the current project and re-provision it in the new project. This would mean that the device would lose all its data and would need to be re-configured.
-
-### Things to keep in mind
-1. Ensure that the device actually exists in the current project and fleet  (default.scogo-store).
-2. migrate.json file should be present in the router to pick up the device details from. This file should be deleted after the migration is complete.
-3. Device name will be picked up from UCI config. Ensure that the device name is unique even in the new project.
-5. Golain `OrgID` and `api_key` values will remain the same across all migrations, and will be picked up from UCI config.
-4. All data tied to the device in the original project would be lost after the migration is complete.
-
-### Migration File Example
-
-```json
-{
-    "store_project_id": "", // the current project id (of the store) - this is where the device is currently provisioned
-    "store_fleet_id": "", // same as above, but fleet id
-    "fleet_device_template_id": "", // the new template id where the device will be provisioned (can be copied from Blueprints on Golain Console)
-    "project_id": "", // the new project id where the device will be provisioned
-    "fleet_id": "", // the new fleet id where the device will be provisioned
-    "tags": ["tag1", "tag2", "tag3"] //  tags to be applied to the device
-}
-```
-
-### Running Script
-1. Copy `migrate.json` locally and update the values as needed.
-2. Run the following commands in the same directory as `migrate.json`:
-
-```bash
-curl -o migrate.sh https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/migrate.sh
-chmod +x migrate.sh
-
-./migrate.sh
-```
-
-`migrate.json` doesn't contain any sensitive information. It can be shared with anyone and need not be deleted after the migration is complete.
+- If the device has already been provisioned, and no manual cleanup / deletion was done, then the script will detect this and give the user the option to re-provision the device with new credentials based on `config.json` file.
+- If the device has been manually deleted from the golain dashboard, then manually delete the thornol config dirs and files from the router and run the script again.
