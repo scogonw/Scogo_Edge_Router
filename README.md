@@ -13,7 +13,6 @@ root@OpenWrt:~#
 
 - Karan: 
     - [ ] Fix DHCP warning issue (dhcp_option)
-    - [ ] Update value of `replace value="<%=duser%>" with value="scogo"` in /usr/lib/lua/luci/view/themes/argon/sysauth.htm
     - [ ] Check if rathole and rutty installation and configuration can directly go into the Image. Such that upon resetting the device, it should revert back to original firmware image that should be remotely managed / configured. This could be a savior backdoor in case of failure, we can get the device resetted and take remote control.
     - [ ] Check if rutty UI could be integrated in Argon/Luci theme, left bottom section as <Device Terminal>, this should be only visible to root user
 
