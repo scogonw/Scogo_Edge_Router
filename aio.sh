@@ -118,10 +118,10 @@ migration_check() {
                 echo ">> Continuing with the existing device registration..."
             fi
         else
-            echo ">> Device is not registered..."
+            echo ">> Device is not registered, will attempt to register the device..."
         fi
     else
-        echo ">> Device is not registered..."
+        echo ">> Device is not registered, will attempt to register the device...."
     fi
 }
 
@@ -139,7 +139,7 @@ delete_device(){
     device_id=$(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e @.data.deviceIds[0])
     # check if store_fleet_id and store_project_id are not empty
     if [ -z "$store_fleet_id" ] || [ -z "$store_project_id" ]; then
-        echo ">> Error : store_fleet_id or store_project_id missing from uci... Exiting"
+        echo ">> Error : $store_fleet_id or $store_project_id missing from uci... Exiting"
         exit 1
     fi
     # check if the device is registered
@@ -162,7 +162,7 @@ delete_device(){
                 exit 1
             fi
         else
-            echo ">> Error : device_id is not set... Exiting"
+            echo ">> Error : $device_id is not set... Exiting"
             exit 1
         fi
     # if the device is not registered, exit
@@ -424,7 +424,6 @@ uci set rpcd.@login[1].password='$p$scogo'
 uci add_list rpcd.@login[1].read='*'
 uci add_list rpcd.@login[1].write='*'
 uci commit rpcd
-
 
 }
 
@@ -804,7 +803,6 @@ apply_device_tags(){
             --header "Content-Type: application/json" \
             --header "Authorization: $api_key" \
             --data "$json_payload" > /usr/lib/thornol/device_tags_response.json
-
             # check if the response is successful based on json file
             status=$(jsonfilter -i /usr/lib/thornol/device_tags_response.json -e @.ok)
             if [ "$status" != "1" ]; then
@@ -830,7 +828,6 @@ add_device_metadata(){
             --header "Content-Type: application/json" \
             --header "Authorization: $api_key" \
             --data "$device_metadata" > /usr/lib/thornol/device_metadata_response.json
-
             # check if the response is successful based on json file
             status=$(jsonfilter -i /usr/lib/thornol/device_metadata_response.json -e @.ok)
             if [ "$status" != "1" ]; then
@@ -859,7 +856,6 @@ add_device_location(){
             --header "Content-Type: application/json" \
             --header "Authorization: $api_key" \
             --data "$json_payload" > /usr/lib/thornol/device_location_response.json
-
             # check if the response is successful based on json file
             status=$(jsonfilter -i /usr/lib/thornol/device_location_response.json -e @.ok)
             if [ "$status" != "1" ]; then
@@ -940,7 +936,6 @@ if [ ! -f /usr/lib/thornol/certs/device_private_key.pem ]; then
 fi
 
 download_thornol_binary
-## Todo : check why apply_device_tags method is not called at this stage ?
 add_device_metadata
 add_device_location
 
@@ -1079,13 +1074,14 @@ main() {
     upload_log_file
     cleanup
 
-    echo "*****************************************************"
+    echo "***************************************************************************"
     echo "Setup Completed ... Check /tmp/$logfile for details."
-    echo "*****************************************************"
-
-    echo "################ IMPORTANT ####################"
-    echo "Please restart the device to apply the changes"
-    echo "###############################################"
+    echo "****************************************************************************"
+    echo
+    echo
+    echo "################ IMPORTANT ################################"
+    echo "You *MUST* restart the device to apply the network changes"
+    echo "###########################################################"
 
 }
 
