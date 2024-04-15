@@ -17,8 +17,8 @@ root@OpenWrt:~#
     - [ ] Check if rutty UI could be integrated in Argon/Luci theme, left bottom section as <Device Terminal>, this should be only visible to root user
 
 - Surya:
-  - [ ] Create a new image and do the folllowing
     - [ ]  `replace value="<%=duser%>" with value="scogo"` in /usr/lib/lua/luci/view/themes/argon/sysauth.htm
+    - [ ]  If link-1 is showing packet drops or link flapping or fluctuating, then mwan3 should automatically make link-2 as primary and link-1 as secondary. This should be done automatically without any manual intervention.
 
 - Keyur : 
     - [ ] discuss how notification service could be extended to push data over Webhooks or HTTP endpoint to create new service tickets on scogo platform or on 3rd party ticketing system 
@@ -32,6 +32,7 @@ root@OpenWrt:~#
     - [x] Migrations as part of `aio.sh` script. [[#11](https://github.com/scogonw/Scogo_Edge_Router/pull/11)]
     - [ ] Add scogo notification API to Golan's rule engine to send notifications to subscribers in case of device is offline with retries mechanisms
     - [ ] Possiblity of submitting remote commands to device and get output back from the device
+    - [ ] use `enable_dashboard` flag to enable/disable the dashboard for the device automatically
 
 # Scogo Edge Router Configuration
 1. Copy `config_Serial_Number.json` locally and update the values as needed.

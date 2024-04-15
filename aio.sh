@@ -3,8 +3,8 @@
 # Enable debugging mode
 #set -x
 
-# Redirect stdout and stderr to a log file in /tmp directory with a unique file name using the current date and time stamp in the file name format (aio-YYYYMMDD-HHMMSS.log)
-#exec > >(tee /tmp/aio-$(date '+%Y%m%d-%H%M%S').log) 2>&1
+# Redirect stdout and stderr to a log file in /var/log directory with a unique file name using the current date and time stamp in the file name format (aio-YYYYMMDD-HHMMSS.log)
+#exec > >(tee /var/log/aio-$(date '+%Y%m%d-%H%M%S').log) 2>&1
 
 
 ## Kubernetes pre-requisites
@@ -417,6 +417,8 @@ echo -e "$admin_password\n$admin_password" | passwd $admin_username
 echo ">> Configuring permissions for user $admin_username ..."
 chmod 0700 /sbin/uci
 chmod 0600 /etc/config/scogo
+chmod 0600 /root/aio.sh &> /dev/null
+chmod 0600 /root/config.json &> /dev/null
 
 uci add rpcd login
 uci set rpcd.@login[1].username="${admin_username}"
@@ -902,6 +904,7 @@ EOF
 chmod +x /etc/init.d/thornol
 /etc/init.d/thornol enable
 echo "===> Starting Thornol service ..."
+/etc/init.d/thornol stop
 /etc/init.d/thornol start
 }
 
@@ -974,21 +977,20 @@ upload_log_file() {
     serial_number=$(uci get scogo.@device[0].serial_number | tr '[A-Z]' '[a-z]')
     #logfile="lastlog"
     # convert the log file to base64
-    base64_logfile=$(base64 -w 0 "/tmp/$logfile")
+    base64_logfile=$(base64 -w 0 "/var/log/$logfile")
     # Create a payload for the API request that should include the "serial_number": "serial number", "mime_type": "application/json", "file": filebase64 encoded log file
     payload='{"serial_number": "'"$serial_number"'", "mime_type": "text/plain", "file": "'"$base64_logfile"'", "action": "installation_log_file"}'
     # Send the payload to the API endpoint in --data option , add the endpoint in --location option , add the headers in --header option the headers should include the content type as application/json
-    curl -s -o /tmp/upload_log_file_response.json --location $asset_file_upload_endpoint \
+    curl -s -o /var/log/upload_log_file_response.json --location $asset_file_upload_endpoint \
     --header "Content-Type: application/json" \
     --data "$payload"
 
-    response_code=$(jsonfilter -i /tmp/upload_log_file_response.json -e @.code)
-    response_message=$(jsonfilter -i /tmp/upload_log_file_response.json -e @.data.message)
+    response_code=$(jsonfilter -i /var/log/upload_log_file_response.json -e @.code)
+    response_message=$(jsonfilter -i /var/log/upload_log_file_response.json -e @.data.message)
 
     ## check if the response code is 200 and if not, write the error to stderr including the response code and message from the API and exit
     if [ $response_code -eq 200 ]; then
         echo ">> Log file uploaded successfully to Scogo Asset Inventory"
-        #echo ">> Response Code: $response_code , Message: $response_message"
     else
         echo "**ERROR** : Failed to upload log file to Scogo Asset Inventory. Error Code: $response_code, Message: $response_message Please check & try again... Exiting" >&1
         exit 1
@@ -1010,14 +1012,17 @@ upload_config_file() {
     # Create a payload for the API request that should include the "serial_number": "serial number", "mime_type": "application/json", "file": filebase64 encoded config.json file
     payload='{"serial_number": "'"$serial_number"'", "mime_type": "application/json", "file": "'"$base64_configfile"'", "action": "device_config_file"}'
     # Send the payload to the API endpoint in --data option , add the endpoint in --location option , add the headers in --header option the headers should include the content type as application/json
-    response_code=$(curl -s -o /dev/null -w "%{http_code}" --location $asset_file_upload_endpoint \
+    curl -s -o /var/log/upload_config_file_response.json -w "%{http_code}" --location $asset_file_upload_endpoint \
     --header "Content-Type: application/json" \
-    --data "$payload")
+    --data "$payload"
+
+    response_code=$(jsonfilter -i /var/log/upload_config_file_response.json -e @.code)
+    response_message=$(jsonfilter -i /var/log/upload_config_file_response.json -e @.data.message)
 
     if [ $response_code -eq 200 ]; then
         echo ">> Config file uploaded successfully to Scogo Asset Inventory"
     else
-        echo "**ERROR** : Failed to upload /root/config.json file to Scogo Asset Inventory. Error Code: $response_code. Please check & try again... Exiting" >&1
+        echo "**ERROR** : Failed to upload /root/config.json file to Scogo Asset Inventory. Error Code: $response_code, Message: $response_message Please check & try again... Exiting" >&1
         exit 1
     fi
 
@@ -1069,13 +1074,13 @@ main() {
         thornol_setup
         upload_config_file
 
-    } | tee "/tmp/$logfile" >&1
+    } | tee "/var/log/$logfile" >&1
 
     upload_log_file
     cleanup
 
     echo "***************************************************************************"
-    echo "Setup Completed ... Check /tmp/$logfile for details."
+    echo "Setup Completed ... Check /var/log/$logfile for details."
     echo "****************************************************************************"
     echo
     echo
