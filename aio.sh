@@ -35,6 +35,14 @@
 ### 3-4-2024 @IshanDaga
 ### - Added function to apply device tags by name
 
+
+### 12-4-2024 @IshanDaga
+### - Added function to add device metadata
+### - Added function to set device location
+
+### 14-4-2024 @IshanDaga
+### - Device migration now part of main script
+
 ##########################
 # Prerequisites Setup    #
 ##########################
@@ -84,6 +92,88 @@ then
     fi
 fi
 
+}
+
+##########################
+#     Migration Check    #
+##########################
+
+migration_check() {
+    echo "=============================================="
+    echo "Checking for Existing Device Registeration ..."
+    echo "=============================================="
+
+    # check if the device has been registered
+    if [ -f /usr/lib/thornol/device_registration_response.json ]; then
+        # if the device is registered, extract the device id
+        device_id=$(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e @.data.deviceIds[0])
+        # if the device id is not empty
+        if [ ! -z "$device_id" ]; then
+            echo ">> Device is already registered with device_id: $device_id"
+            echo ">> Do you want to delete the device and re-register? (y/n)"
+            read -r delete_device
+            if [ "$delete_device" == "y" ]; then
+                delete_device
+            else
+                echo ">> Continuing with the existing device registration..."
+            fi
+        else
+            echo ">> Device is not registered..."
+        fi
+    else
+        echo ">> Device is not registered..."
+    fi
+}
+
+#####################
+# Delete Old Device #
+#####################
+
+delete_device(){
+    echo "===> Deleting the device from store..."
+    # get fleet id and project id from uci
+    store_fleet_id=$(uci get scogo.@infrastructure[0].golain_fleet_id)
+    store_project_id=$(uci get scogo.@infrastructure[0].golain_project_id)
+    api_key=$(uci get scogo.@infrastructure[0].golain_api_key)
+    org_id=$(uci get scogo.@infrastructure[0].golain_org_id)
+    device_id=$(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e @.data.deviceIds[0])
+    # check if store_fleet_id and store_project_id are not empty
+    if [ -z "$store_fleet_id" ] || [ -z "$store_project_id" ]; then
+        echo ">> Error : store_fleet_id or store_project_id missing from uci... Exiting"
+        exit 1
+    fi
+    # check if the device is registered
+    if [ -f /usr/lib/thornol/device_registration_response.json ]; then
+        # if the device is registered, extract the device id
+        device_id=$(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e @.data.deviceIds[0])
+        # if the device id is not empty
+        if [ ! -z "$device_id" ]; then
+            # delete the device
+            curl -s --location 'https://api.golain.io/core/api/v1/projects/'"$store_project_id"'/fleets/'"$store_fleet_id"'/devices/'"$device_id" \
+            --header "ORG-ID: $org_id" \
+            --header "Content-Type: application/json" \
+            --header "Authorization: $api_key" \
+            --request DELETE > /usr/lib/thornol/device_deletion_response.json
+
+            # check if the response is successful based on json file
+            status=$(jsonfilter -i /usr/lib/thornol/device_deletion_response.json -e @.ok)
+            if [ "$status" != "1" ]; then
+                echo ">> Error : Failed to delete the device. Reason: $(jsonfilter -i /usr/lib/thornol/device_deletion_response.json -e @.message)"
+                exit 1
+            fi
+        else
+            echo ">> Error : device_id is not set... Exiting"
+            exit 1
+        fi
+    # if the device is not registered, exit
+    else 
+        echo ">> Error : Device is not registered... Exiting"
+        exit 1
+    fi
+    # remove the thorol directories and files
+    rm -rf /usr/lib/thornol
+    rm -rf /etc/init.d/thornol
+    rm -f /usr/bin/thornol
 }
 
 ##########################
@@ -964,6 +1054,8 @@ main() {
             echo "**ERROR** : Failed to setup prerequisites. Please check & try again... Exiting" >&1
             exit 1
         fi
+
+        migration_check
 
         operating_system_setup
         if [ $failure -eq 1 ]; then
