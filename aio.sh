@@ -3,8 +3,8 @@
 # Enable debugging mode
 #set -x
 
-# Redirect stdout and stderr to a log file in /tmp directory with a unique file name using the current date and time stamp in the file name format (aio-YYYYMMDD-HHMMSS.log)
-#exec > >(tee /tmp/aio-$(date '+%Y%m%d-%H%M%S').log) 2>&1
+# Redirect stdout and stderr to a log file in /var/log directory with a unique file name using the current date and time stamp in the file name format (aio-YYYYMMDD-HHMMSS.log)
+#exec > >(tee /var/log/aio-$(date '+%Y%m%d-%H%M%S').log) 2>&1
 
 
 ## Kubernetes pre-requisites
@@ -26,8 +26,22 @@
 #7 currently the topic for notification are created manually by keyur, we need to automate this by curling the API
 #8 Add k8s operator that monitors config map and restart the pods if there is any change in config map
 
-## Update as on 25 March
+## Update as on 3rd April (@IshanDaga)
 
+############################
+#      ChangeLog           #
+############################
+
+### 3-4-2024 @IshanDaga
+### - Added function to apply device tags by name
+
+
+### 12-4-2024 @IshanDaga
+### - Added function to add device metadata
+### - Added function to set device location
+
+### 14-4-2024 @IshanDaga
+### - Device migration now part of main script
 
 ##########################
 # Prerequisites Setup    #
@@ -68,16 +82,98 @@ opkg update
 #echo "==> Checking if curl and jsonfilter commands are available ..."
 if ! command -v curl &> /dev/null || ! command -v jsonfilter &> /dev/null || ! command -v jq &> /dev/null
 then
-    echo "==> Installing curl, jsonfilter, jq, coreutils-base64, mwan3, luci-app-mwan3 packages ..."
-    opkg install curl coreutils-base64 jsonfilter jq mwan3 luci-app-mwan3 iptables-nft
+    echo "==> Installing curl, jsonfilter, jq, coreutils-base64, mwan3, luci-app-mwan3, shadow-useradd packages ..."
+    opkg install curl coreutils-base64 jsonfilter jq mwan3 luci-app-mwan3 iptables-nft shadow-useradd
     # check if the installation was successful
     if [ $? -ne 0 ]; then
-        echo "**ERROR** : Failed to install curl, jsonfilter, jq, coreutils-base64, mwan3, luci-app-mwan3 packages. Please try again... Exiting" >&1
+        echo "**ERROR** : Failed to install packages... Exiting" >&1
         failure=1
         exit 1
     fi
 fi
 
+}
+
+##########################
+#     Migration Check    #
+##########################
+
+migration_check() {
+    echo "=============================================="
+    echo "Checking for Existing Device Registeration ..."
+    echo "=============================================="
+
+    # check if the device has been registered
+    if [ -f /usr/lib/thornol/device_registration_response.json ]; then
+        # if the device is registered, extract the device id
+        device_id=$(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e @.data.deviceIds[0])
+        # if the device id is not empty
+        if [ ! -z "$device_id" ]; then
+            echo ">> Device is already registered with device_id: $device_id"
+            echo ">> Do you want to delete the device and re-register? (y/n)"
+            read -r delete_device
+            if [ "$delete_device" == "y" ]; then
+                delete_device
+            else
+                echo ">> Continuing with the existing device registration..."
+            fi
+        else
+            echo ">> Device is not registered, will attempt to register the device..."
+        fi
+    else
+        echo ">> Device is not registered, will attempt to register the device...."
+    fi
+}
+
+#####################
+# Delete Old Device #
+#####################
+
+delete_device(){
+    echo "===> Deleting the device from store..."
+    # get fleet id and project id from uci
+    store_fleet_id=$(uci get scogo.@infrastructure[0].golain_fleet_id)
+    store_project_id=$(uci get scogo.@infrastructure[0].golain_project_id)
+    api_key=$(uci get scogo.@infrastructure[0].golain_api_key)
+    org_id=$(uci get scogo.@infrastructure[0].golain_org_id)
+    device_id=$(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e @.data.deviceIds[0])
+    # check if store_fleet_id and store_project_id are not empty
+    if [ -z "$store_fleet_id" ] || [ -z "$store_project_id" ]; then
+        echo ">> Error : $store_fleet_id or $store_project_id missing from uci... Exiting"
+        exit 1
+    fi
+    # check if the device is registered
+    if [ -f /usr/lib/thornol/device_registration_response.json ]; then
+        # if the device is registered, extract the device id
+        device_id=$(jsonfilter -i /usr/lib/thornol/device_registration_response.json -e @.data.deviceIds[0])
+        # if the device id is not empty
+        if [ ! -z "$device_id" ]; then
+            # delete the device
+            curl -s --location 'https://api.golain.io/core/api/v1/projects/'"$store_project_id"'/fleets/'"$store_fleet_id"'/devices/'"$device_id" \
+            --header "ORG-ID: $org_id" \
+            --header "Content-Type: application/json" \
+            --header "Authorization: $api_key" \
+            --request DELETE > /usr/lib/thornol/device_deletion_response.json
+
+            # check if the response is successful based on json file
+            status=$(jsonfilter -i /usr/lib/thornol/device_deletion_response.json -e @.ok)
+            if [ "$status" != "1" ]; then
+                echo ">> Error : Failed to delete the device. Reason: $(jsonfilter -i /usr/lib/thornol/device_deletion_response.json -e @.message)"
+                exit 1
+            fi
+        else
+            echo ">> Error : $device_id is not set... Exiting"
+            exit 1
+        fi
+    # if the device is not registered, exit
+    else 
+        echo ">> Error : Device is not registered... Exiting"
+        exit 1
+    fi
+    # remove the thorol directories and files
+    rm -rf /usr/lib/thornol
+    rm -rf /etc/init.d/thornol
+    rm -f /usr/bin/thornol
 }
 
 ##########################
@@ -101,13 +197,19 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "===> Setting banner message ..."
-curl -s -o /etc/banner https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/config/banner
-if [ $? -ne 0 ]; then
-    echo "**ERROR** : Failed to fetch banner message from Github. Please check & try again... Exiting" >&1
-    failure=1
-    exit 1
+model_code=$(jsonfilter -i config.json -e @.device.model_code)
+# Check if the model_code variable is not empty
+if [ -n "$model_code" ]; then
+    # Use the model_code variable as part of the URL in the curl command
+    curl -s -o /etc/banner "https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/config/banner_${model_code}"
+        if [ $? -ne 0 ]; then
+            echo "**ERROR** : Failed to fetch https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/config/banner_${model_code} file from Github. Please check & try again... Exiting" >&1
+            failure=1
+            exit 1
 fi
-
+else
+    echo "**ERROR** : Failed to retrieve model code from config.json"
+fi
 
 echo "===> Setting up UCI for Device configuration details ..."
 # Read all keys without quotes or commas using jq
@@ -116,7 +218,7 @@ device_keys=$(jq -r '.device | keys_unsorted | @csv' config.json | sed 's/"//g')
 IFS=, ; set -- $device_keys  # Ash-specific way to split string
 # Loop through each key and set the value in UCI
 for key do
-    device_value=$(jsonfilter -i config.json -e @.device.$key| tr '[a-z]' '[A-Z]')
+    device_value=$(jsonfilter -i config.json -e @.device.$key)
     echo ">> Running uci set scogo.@device[0].$key=$device_value ..."
     uci set scogo.@device[0]."$key"="$device_value"
 done
@@ -134,7 +236,7 @@ site_keys=$(jq -r '.site | keys_unsorted | @csv' config.json | sed 's/"//g')
 IFS=, ; set -- $site_keys  # Ash-specific way to split string
 # Loop through each key and set the value in UCI
 for key do
-    site_value=$(jsonfilter -i config.json -e @.site.$key | tr '[a-z]' '[A-Z]')
+    site_value=$(jsonfilter -i config.json -e @.site.$key)
     echo ">> Running uci set scogo.@site[0].$key=$site_value ..."
     uci set scogo.@site[0]."$key"="$site_value"
 done
@@ -154,7 +256,7 @@ if [ "$configure_link1" == "True" ]; then
     IFS=, ; set -- $link1_keys  # Ash-specific way to split string
     # Loop through each key and set the value in UCI
     for key do
-        link1_value=$(jsonfilter -i config.json -e @.link1.$key | tr '[a-z]' '[A-Z]')
+        link1_value=$(jsonfilter -i config.json -e @.link1.$key)
         echo ">> Running uci set scogo.@link1[0].$key=$link1_value ..."
         uci set scogo.@link1[0]."$key"="$link1_value"
     done
@@ -175,7 +277,7 @@ if [ "$configure_link2" == "True" ]; then
     IFS=, ; set -- $link2_keys  # Ash-specific way to split string
     # Loop through each key and set the value in UCI
     for key do
-        link2_value=$(jsonfilter -i config.json -e @.link2.$key | tr '[a-z]' '[A-Z]')
+        link2_value=$(jsonfilter -i config.json -e @.link2.$key)
         echo ">> Running uci set scogo.@link2[0].$key=$link2_value ..."
         uci set scogo.@link2[0]."$key"="$link2_value"
     done
@@ -205,6 +307,9 @@ unset IFS
 unset key
 uci commit scogo
 
+echo "===> Printing updated Scogo Configuration ..."
+uci show scogo
+
 ## setup up wifi
 configure_wifi=$(jsonfilter -i config.json -e @.device.configure_wifi)
 if [ "$configure_wifi" == "True" ]; then
@@ -225,7 +330,7 @@ else
 fi
 
 echo "===> Getting Current Network Configuration ..."
-uci show | grep -i network
+uci show network
 
 echo "===> Adding LAN3 and LAN4 to the LAN Bridge ..."
 uci set network.@device[0].ports='lan3 lan4'
@@ -253,8 +358,7 @@ uci set firewall.@defaults[0].flow_offloading='1'
 uci set firewall.@defaults[0].flow_offloading_hw='1'
 uci commit firewall
 
-#https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/network/C6UT_network
-
+echo "===> Configuring LAN ..."
 model_code=$(jsonfilter -i config.json -e @.device.model_code)
 echo "===> Setting up Network Configuration for model code $model_code  ..."
 if [ "$model_code" == "C6UT" ]; then
@@ -270,6 +374,29 @@ else
     exit 1
 fi
 
+network_router_ip=$(jsonfilter -i config.json -e @.device.network_router_ip)
+network_router_domain=$(jsonfilter -i config.json -e @.device.network_router_domain)
+echo "===> Setting up Router IP and Domain ..."
+uci set network.lan.ipaddr="$network_router_ip"
+uci set dhcp.@dnsmasq[0].server="$network_router_ip"
+uci add_list dhcp.@dnsmasq[0].server="/$network_router_domain/$network_router_ip"
+uci set dhcp.lan.dhcp_option="6,$network_router_ip 3,$network_router_ip"
+echo "address=/$network_router_domain/$network_router_ip" >> /etc/dnsmasq.conf
+uci commit dhcp
+uci commit network
+service dnsmasq restart
+
+echo "===> Setting up Hostname, Description, Timezone and Zonename ..."
+make=$(jsonfilter -i config.json -e @.device.make)
+series=$(jsonfilter -i config.json -e @.device.series)
+model=$(jsonfilter -i config.json -e @.device.model)
+
+uci set system.@system[0].hostname="$(jsonfilter -i config.json -e @.device.hostname | tr '[a-z]' '[A-Z]')"
+uci set system.@system[0].description="$make $series $model"
+uci set system.@system[0].timezone="$(jsonfilter -i config.json -e @.device.timezone)"
+uci set system.@system[0].zonename="$(jsonfilter -i config.json -e @.device.zonename)"
+uci commit system
+
 echo "===> Setting up Firewall Zones ..."
 uci set firewall.@zone[1].network='wan wan1 wan2'
 uci commit firewall
@@ -277,18 +404,28 @@ echo "===> Restarting Firewall Service ..."
 /etc/init.d/firewall reload
 
 echo "===> Setting up root user password ..."
-root_user=$(jsonfilter -i config.json -e @.device.root_user)
+root_user=$(jsonfilter -i config.json -e @.device.root_username)
 root_password=$(jsonfilter -i config.json -e @.device.root_password)
-# Todo : remove the below line before deploying to production
-#echo "root:$root_password" | chpasswd
 echo -e "$root_password\n$root_password" | passwd $root_user
-
 
 admin_username=$(jsonfilter -i config.json -e @.device.admin_username)
 echo "===> Setting up non-root user $admin_username ..."
 admin_password=$(jsonfilter -i config.json -e @.device.admin_password)
 useradd -m -s /bin/ash $admin_username  >&1
 echo -e "$admin_password\n$admin_password" | passwd $admin_username
+
+echo ">> Configuring permissions for user $admin_username ..."
+chmod 0700 /sbin/uci
+chmod 0600 /etc/config/scogo
+chmod 0600 /root/aio.sh &> /dev/null
+chmod 0600 /root/config.json &> /dev/null
+
+uci add rpcd login
+uci set rpcd.@login[1].username="${admin_username}"
+uci set rpcd.@login[1].password='$p$scogo'
+uci add_list rpcd.@login[1].read='*'
+uci add_list rpcd.@login[1].write='*'
+uci commit rpcd
 
 }
 
@@ -300,7 +437,7 @@ mwan3_and_notificatio_setup() {
     echo "===================================="
     echo "Setting up MWAN3 & Notification ... "
     echo "===================================="
-
+    
     echo "===> Setting up MWAN3 ..."
     curl -s -o /etc/config/mwan3 https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/mwan3/mwan3
     if [ $? -ne 0 ]; then
@@ -325,7 +462,7 @@ mwan3_and_notificatio_setup() {
     IFS=, ; set -- $notification_keys  # Ash-specific way to split string
     # Loop through each key and set the value in UCI
     for key do
-        notification_value=$(jsonfilter -i config.json -e @.notification.$key | tr '[a-z]' '[A-Z]')
+        notification_value=$(jsonfilter -i config.json -e @.notification.$key)
         echo ">> Running uci set scogo.@notification[0].$key=$notification_value ..."
         uci set scogo.@notification[0]."$key"="$notification_value"
     done
@@ -343,14 +480,14 @@ mwan3_and_notificatio_setup() {
     notification_topic=$(uci get scogo.@notification[0].notification_topic)
 
     echo "===> Creating Notification Topic ..."
-    response_code=$(curl -s -o /dev/null -w "%{http_code}" --location $notification_service_endpoint/v1/topics \
+    response_code=$(curl -s -o /dev/null -w "%{http_code}" --insecure --location $notification_service_endpoint/v1/topics \
     --header 'Content-Type: application/json' \
     --data '{
         "key": "'"$notification_topic"'",
         "name": "'"$notification_topic"'"
     }')
 
-    if [ $response_code -eq 200 ]; then
+    if [ $response_code -eq 200 ] || [ $response_code -eq 201 ]; then
         echo ">> Notification Topic $notification_topic created successfully"
     elif [ $response_code -eq 409 ]; then
         echo ">> Notification Topic $notification_topic already exists"
@@ -391,6 +528,7 @@ type = "tcp"
 local_addr = "0.0.0.0:3000"
 nodelay = true
 EOF
+chmod 0600 /etc/config/rathole-client.toml
 
     echo "===> Creating /etc/init.d/rathole file ..."
 
@@ -650,6 +788,86 @@ json_get_var root_ca_cert "root_ca_cert.pem"
 echo "$root_ca_cert" | base64 -d > /usr/lib/thornol/certs/root_ca_cert.pem
 }
 
+apply_device_tags(){
+    echo "===> Applying device tags to the device ..."
+    # get the device tags from config.json
+    device_tags=$(jq -c '.device.tags' config.json)
+    echo "===> Found device tags: $device_tags"
+    # if the device tags are not empty
+    if [ ! -z "$device_tags" ]; then
+        # if the device id is not empty
+        if [ ! -z "$device_id" ]; then
+            json_payload="{\"tag_names\":$device_tags}"
+            # apply the device tags to the device
+            echo "===> Applying device tags to the device ..."
+            curl -s --location 'https://api.golain.io/core/api/v1/projects/'"$project_id"'/fleets/'"$fleet_id"'/devices/'"$device_id"'/tags_by_name' \
+            --header "ORG-ID: $org_id" \
+            --header "Content-Type: application/json" \
+            --header "Authorization: $api_key" \
+            --data "$json_payload" > /usr/lib/thornol/device_tags_response.json
+            # check if the response is successful based on json file
+            status=$(jsonfilter -i /usr/lib/thornol/device_tags_response.json -e @.ok)
+            if [ "$status" != "1" ]; then
+                echo ">> Error : Failed to apply device tags to the device. Reason: $(jsonfilter -i /usr/lib/thornol/device_tags_response.json -e @.message)"
+                exit 1
+            fi
+        fi
+    fi
+}
+
+add_device_metadata(){
+    echo "===> Fetching Device Metadata ..."
+    # pickup relevant metadata from config.json
+    device_metadata=$(jq -c '{device, site, link1, link2, notification}' config.json)
+    # if metadata is not empty
+    if [ ! -z "$device_metadata" ]; then
+        # if the device id is not empty
+        if [ ! -z "$device_id" ]; then
+            # apply the device metadata to the device
+            echo "===> Adding metadata to the device ..."
+            curl -s --location 'https://api.golain.io/core/api/v1/projects/'"$project_id"'/fleets/'"$fleet_id"'/devices/'"$device_id"'/meta' \
+            --header "ORG-ID: $org_id" \
+            --header "Content-Type: application/json" \
+            --header "Authorization: $api_key" \
+            --data "$device_metadata" > /usr/lib/thornol/device_metadata_response.json
+            # check if the response is successful based on json file
+            status=$(jsonfilter -i /usr/lib/thornol/device_metadata_response.json -e @.ok)
+            if [ "$status" != "1" ]; then
+                echo ">> Error : Failed to add device metadata to the device. Reason: $(jsonfilter -i /usr/lib/thornol/device_metadata_response.json -e @.message)"
+                exit 1
+            fi
+        fi
+    fi
+}
+
+add_device_location(){
+    echo "===> Fetching Device Location ..."
+    #get the device location from config.json
+    location_string=$(uci get scogo.@site[0].device_latitude_longitude)
+    latitude=$(echo $location_string | cut -d, -f1)
+    longitude=$(echo $location_string | cut -d, -f2)
+    # if locations are not empty
+    if [ ! -z "$latitude" ] && [ ! -z "$longitude" ]; then
+        # if the device id is not empty
+        if [ ! -z "$device_id" ]; then
+            json_payload="{\"location\":{\"latitude\":$latitude,\"longitude\":$longitude}}"
+            # apply the device tags to the device
+            echo "===> Updating Device Location Metadata ..."
+            curl -s --location 'https://api.golain.io/core/api/v1/projects/'"$project_id"'/fleets/'"$fleet_id"'/devices/'"$device_id"'/location' \
+            --header "ORG-ID: $org_id" \
+            --header "Content-Type: application/json" \
+            --header "Authorization: $api_key" \
+            --data "$json_payload" > /usr/lib/thornol/device_location_response.json
+            # check if the response is successful based on json file
+            status=$(jsonfilter -i /usr/lib/thornol/device_location_response.json -e @.ok)
+            if [ "$status" != "1" ]; then
+                echo ">> Error : Failed to set device location. Reason: $(jsonfilter -i /usr/lib/thornol/device_location_response.json -e @.message)"
+                exit 1
+            fi
+        fi
+    fi
+}
+
 create_initd_service() {
 # Create a init.d service for the binary
 echo "===> Setting up /etc/init.d/thornol service file for Thornol ..."
@@ -686,6 +904,7 @@ EOF
 chmod +x /etc/init.d/thornol
 /etc/init.d/thornol enable
 echo "===> Starting Thornol service ..."
+/etc/init.d/thornol stop
 /etc/init.d/thornol start
 }
 
@@ -702,6 +921,7 @@ if [ ! -f /usr/lib/thornol/device_registration_response.json ] || [ "$(jsonfilte
     if [ ! -f /usr/lib/thornol/connection_settings.json ]; then
         create_new_device
         setup_shadow_config_values
+        apply_device_tags
     fi
 fi
 
@@ -719,6 +939,8 @@ if [ ! -f /usr/lib/thornol/certs/device_private_key.pem ]; then
 fi
 
 download_thornol_binary
+add_device_metadata
+add_device_location
 
 # if the init.d service does not exist, create it
 if [ ! -f /etc/init.d/thornol ]; then
@@ -739,7 +961,71 @@ cleanup() {
 
     ## Opkg remove jq and
     echo "===> Removing coreutils-base64 jq package ..."
-    opkg remove coreutils-base64 jq --force-depends
+    opkg remove coreutils-base64 jq shadow-useradd --force-depends
+}
+
+## Upload Log file to Scogo Asset Inventory
+upload_log_file() {
+
+    echo "======================="
+    echo "Uploading Log File ..."
+    echo "======================="
+
+    ## Upload the log file to scogo asset inventory against the device serial number
+    echo "===> Uploading log file to Scogo Asset Inventory ..."
+    asset_file_upload_endpoint="https://ydzkg5tj55.execute-api.ap-south-1.amazonaws.com/prod/api/webhooks/assets/config"
+    serial_number=$(uci get scogo.@device[0].serial_number | tr '[A-Z]' '[a-z]')
+    #logfile="lastlog"
+    # convert the log file to base64
+    base64_logfile=$(base64 -w 0 "/var/log/$logfile")
+    # Create a payload for the API request that should include the "serial_number": "serial number", "mime_type": "application/json", "file": filebase64 encoded log file
+    payload='{"serial_number": "'"$serial_number"'", "mime_type": "text/plain", "file": "'"$base64_logfile"'", "action": "installation_log_file"}'
+    # Send the payload to the API endpoint in --data option , add the endpoint in --location option , add the headers in --header option the headers should include the content type as application/json
+    curl -s -o /var/log/upload_log_file_response.json --location $asset_file_upload_endpoint \
+    --header "Content-Type: application/json" \
+    --data "$payload"
+
+    response_code=$(jsonfilter -i /var/log/upload_log_file_response.json -e @.code)
+    response_message=$(jsonfilter -i /var/log/upload_log_file_response.json -e @.data.message)
+
+    ## check if the response code is 200 and if not, write the error to stderr including the response code and message from the API and exit
+    if [ $response_code -eq 200 ]; then
+        echo ">> Log file uploaded successfully to Scogo Asset Inventory"
+    else
+        echo "**ERROR** : Failed to upload log file to Scogo Asset Inventory. Error Code: $response_code, Message: $response_message Please check & try again... Exiting" >&1
+        exit 1
+    fi
+
+}
+
+upload_config_file() {
+    echo "=========================="
+    echo "Uploading Config File ..."
+    echo "=========================="
+    ## Upload the config.json file to scogo asset inventory against the device serial number
+    echo "===> Uploading config.json file to Scogo Asset Inventory ..."
+    asset_file_upload_endpoint="https://ydzkg5tj55.execute-api.ap-south-1.amazonaws.com/prod/api/webhooks/assets/config"
+    serial_number=$(uci get scogo.@device[0].serial_number | tr '[A-Z]' '[a-z]')
+    #logfile="lastlog"
+    # convert the config.json file to base64
+    base64_configfile=$(base64 -w 0 "/root/config.json")
+    # Create a payload for the API request that should include the "serial_number": "serial number", "mime_type": "application/json", "file": filebase64 encoded config.json file
+    payload='{"serial_number": "'"$serial_number"'", "mime_type": "application/json", "file": "'"$base64_configfile"'", "action": "device_config_file"}'
+    # Send the payload to the API endpoint in --data option , add the endpoint in --location option , add the headers in --header option the headers should include the content type as application/json
+    curl -s -o /var/log/upload_config_file_response.json -w "%{http_code}" --location $asset_file_upload_endpoint \
+    --header "Content-Type: application/json" \
+    --data "$payload"
+
+    response_code=$(jsonfilter -i /var/log/upload_config_file_response.json -e @.code)
+    response_message=$(jsonfilter -i /var/log/upload_config_file_response.json -e @.data.message)
+
+    if [ $response_code -eq 200 ]; then
+        echo ">> Config file uploaded successfully to Scogo Asset Inventory"
+    else
+        echo "**ERROR** : Failed to upload /root/config.json file to Scogo Asset Inventory. Error Code: $response_code, Message: $response_message Please check & try again... Exiting" >&1
+        exit 1
+    fi
+
 }
 
 ################
@@ -769,6 +1055,8 @@ main() {
             exit 1
         fi
 
+        migration_check
+
         operating_system_setup
         if [ $failure -eq 1 ]; then
             echo "**ERROR** : Failed to setup operating system. Please check & try again... Exiting" >&1
@@ -784,62 +1072,21 @@ main() {
         rathole_setup
         rutty_setup
         thornol_setup
-        cleanup
+        upload_config_file
 
-    } | tee "/tmp/$logfile" >&1
+    } | tee "/var/log/$logfile" >&1
 
-        echo "*********************************************"
-        echo "Script finished. Check /tmp/$logfile for details."
-        echo "*********************************************"
-        echo "##### Important #######"
-        echo "Please restart the device to apply the changes"
-        echo "########################"
+    upload_log_file
+    cleanup
 
-    # access_key_id=$1
-    # secret_access_key=$2
-    # bucket_name="ser-installaion-logs"
-    # region="ap-south-1"
-    # endpoint="s3.${region}.amazonaws.com"
-
-    # # Object key (filename) within the bucket
-    # # object_key="/tmp/$logfile"  # Create a folder structure with date
-
-    # # Construct the upload URL with placeholders for signature and date
-    # upload_url="https://${bucket_name}.${endpoint}/${logfile}"
-
-    # # Generate the authorization signature (not recommended to embed secret key directly)
-    # timestamp=$(date -R)  # Get current date in RFC 2822 format
-
-    # # This is a simplified example using SHA1 (AWS recommends using SigV4)
-    # # Refer to AWS documentation for secure signature generation: https://www.amazon.com/gp/help/customer/display.html?nodeId=GRGL3L4SXX29V2ZR
-
-    # string_to_sign="PUT\n\n\n${timestamp}\n/s3/${bucket_name}/${object_key}"
-
-    # signature=$(echo -n "${string_to_sign}" | openssl sha1 -hmac "${secret_access_key}" | sed 's/.*=//')
-
-    # # Construct the cURL command
-    # curl_command="curl -X PUT -T ${logfile} \
-    # -H \"Authorization: AWS ${access_key_id}:${signature}\" \
-    # -H \"Content-Type: application/octet-stream\" \
-    # -H \"Date: ${timestamp}\" \
-    # ${upload_url}"
-
-    # # Execute the cURL command and handle errors
-    # response=$(eval "${curl_command}")
-
-    # if [ $? -eq 0 ]; then
-    # echo "Log file uploaded successfully to S3!"
-    # else
-    #     echo "Error uploading log file: $response"
-    # # Handle errors (e.g., retry logic, send notification)
-    # fi
-
-    # # Your commands here (output and errors will be captured in the log file and uploaded to S3)
-    # command1
-    # command2
-    # # ...
-
-    # echo "Script finished. Check S3 bucket for log details."
+    echo "***************************************************************************"
+    echo "Setup Completed ... Check /var/log/$logfile for details."
+    echo "****************************************************************************"
+    echo
+    echo
+    echo "################ IMPORTANT ################################"
+    echo "You *MUST* restart the device to apply the network changes"
+    echo "###########################################################"
 
 }
 

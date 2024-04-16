@@ -1,27 +1,39 @@
 {
 	"folders": [
 		{
+			"name": "Scogo_Edge_Router",
 			"path": "."
 		},
 		{
-			"path": "../keedebaji"
+			"name": "ser-config",
+			"path": "../ser-config"
 		},
 		{
+			"name": "infra",
 			"path": "../infra"
 		},
 		{
+			"name": "documentation",
 			"path": "../documentation"
 		},
 		{
+			"name": "keedebaji",
+			"path": "../keedebaji"
+		},
+		{
+			"name": "JSON_Converter",
 			"path": "../../../../Downloads/JSON_Converter"
 		},
 		{
+			"name": "llm-experiments",
 			"path": "../llm-experiments"
 		},
 		{
+			"name": "rathole",
 			"path": "../rathole"
 		},
 		{
+			"name": "ttyd",
 			"path": "../ttyd"
 		}
 	],
