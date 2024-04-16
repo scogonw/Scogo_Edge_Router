@@ -433,7 +433,7 @@ uci commit rpcd
 # MWAN3 & Notification Setup  #
 ###############################
 
-mwan3_and_notificatio_setup() {
+mwan3_and_notification_setup() {
     echo "===================================="
     echo "Setting up MWAN3 & Notification ... "
     echo "===================================="
@@ -494,6 +494,27 @@ mwan3_and_notificatio_setup() {
         echo ">> Notification Topic $notification_topic already exists"
     else
         echo "**ERROR** : Error Code: $response_code, Failed to create Notification Topic. Please check & try again... Exiting" >&1
+        failure=1
+        exit 1
+    fi
+
+    echo "===> Adding Subscribers to Topic ..."
+    response_code=$(curl -s -o /dev/null -w "%{http_code}" --insecure --location $notification_service_endpoint/v1/topics/$notification_topic/subscribers \
+    --header "Authorization: $notification_service_auth_key" \
+    --header 'Content-Type: application/json' \
+    --data '{
+        "subscribers": [
+            "10001",
+            "10002",
+            "10003",
+            "10004"
+        ]
+    }')
+
+    if [ $response_code -eq 200 ] || [ $response_code -eq 201 ]; then
+        echo ">> Subscribers added to $notification_topic created successfully"
+    else
+        echo "**ERROR** : Error Code: $response_code, Failed to add subscribers to topic. Please check & try again... Exiting" >&1
         failure=1
         exit 1
     fi
@@ -1064,7 +1085,7 @@ main() {
             exit 1
         fi
 
-        mwan3_and_notificatio_setup
+        mwan3_and_notification_setup
         if [ $failure -eq 1 ]; then
             echo "**ERROR** : Failed to setup MWAN3 & Notification. Please check & try again... Exiting" >&1
             exit 1
