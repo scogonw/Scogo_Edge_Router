@@ -476,11 +476,12 @@ mwan3_and_notificatio_setup() {
     echo "===> Setting up Notifications ..."
     notification_service_endpoint=$(uci get scogo.@notification[0].notification_service_endpoint | tr '[A-Z]' '[a-z]')
     # Todo : Uncomment the below line before deploying to production, when authenticaion for notification service is enabled
-    #notification_service_auth_key=$(uci get scogo.@notification[0].notification_service_auth_key)
+    notification_service_auth_key=$(uci get scogo.@notification[0].notification_service_auth_key)
     notification_topic=$(uci get scogo.@notification[0].notification_topic)
 
     echo "===> Creating Notification Topic ..."
     response_code=$(curl -s -o /dev/null -w "%{http_code}" --insecure --location $notification_service_endpoint/v1/topics \
+    --header "Authorization: $notification_service_auth_key" \
     --header 'Content-Type: application/json' \
     --data '{
         "key": "'"$notification_topic"'",
