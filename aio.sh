@@ -71,6 +71,10 @@ then
     exit 1
 fi
 
+# Get df -h output before installation of packages
+echo "==> Getting storage utilization information before installation of packages ..."
+df -h
+
 # update the package list
 echo "==> Updating the package list ..."
 ## Todo : uncomment the below line after testing
@@ -91,6 +95,9 @@ then
         exit 1
     fi
 fi
+
+echo "==> Getting storage utilization information after installation of packages ..."
+df -h
 
 }
 
