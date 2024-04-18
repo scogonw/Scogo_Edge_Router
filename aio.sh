@@ -3,45 +3,11 @@
 # Enable debugging mode
 #set -x
 
-# Redirect stdout and stderr to a log file in /var/log directory with a unique file name using the current date and time stamp in the file name format (aio-YYYYMMDD-HHMMSS.log)
-#exec > >(tee /var/log/aio-$(date '+%Y%m%d-%H%M%S').log) 2>&1
-
-
-## Kubernetes pre-requisites
-#1. Create ingress route for configure and terminal
-#2. Update CM for configure and terminal
-#3. Update service names for configure and terminal
-#4. Use argocd to deploy the changes
-#5. Delete the existing pods to apply the changes
-
 ## Router pre-requisites
 #1. Create config.json file with all the configuration details on the router
 
 ## Todo
-#1 For every function call make sure the previous function is successful if not then exit the script
-#2 Add the cleanup function at the end of the script
-#3 All the logs failed or successfull should be pushed to remote server with unique file name
-#4 Set password for root user
-#6 Wrap the script (aio.sh) in a curl one-liner installer and update the README.md file with the curl command
-#7 currently the topic for notification are created manually by keyur, we need to automate this by curling the API
 #8 Add k8s operator that monitors config map and restart the pods if there is any change in config map
-
-## Update as on 3rd April (@IshanDaga)
-
-############################
-#      ChangeLog           #
-############################
-
-### 3-4-2024 @IshanDaga
-### - Added function to apply device tags by name
-
-
-### 12-4-2024 @IshanDaga
-### - Added function to add device metadata
-### - Added function to set device location
-
-### 14-4-2024 @IshanDaga
-### - Device migration now part of main script
 
 ##########################
 # Prerequisites Setup    #
@@ -71,6 +37,10 @@ then
     exit 1
 fi
 
+# Get df -h output before installation of packages
+echo "==> Getting storage utilization information before installation of packages ..."
+df -h
+
 # update the package list
 echo "==> Updating the package list ..."
 ## Todo : uncomment the below line after testing
@@ -91,6 +61,9 @@ then
         exit 1
     fi
 fi
+
+echo "==> Getting storage utilization information after installation of packages ..."
+df -h
 
 }
 
@@ -926,8 +899,7 @@ EOF
 chmod +x /etc/init.d/thornol
 /etc/init.d/thornol enable
 echo "===> Starting Thornol service ..."
-/etc/init.d/thornol stop
-/etc/init.d/thornol start
+/etc/init.d/thornol restart
 }
 
 failure=1

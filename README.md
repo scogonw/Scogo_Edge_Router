@@ -16,8 +16,11 @@ root@OpenWrt:~#
     - [ ] Check if rathole and rutty installation and configuration can directly go into the Image. Such that upon resetting the device, it should revert back to original firmware image that should be remotely managed / configured. This could be a savior backdoor in case of failure, we can get the device resetted and take remote control.
     - [ ] Check if rutty UI could be integrated in Argon/Luci theme, left bottom section as <Device Terminal>, this should be only visible to root user
 
-- Surya:
-    - [ ]  `replace value="<%=duser%>" with value="scogo"` in /usr/lib/lua/luci/view/themes/argon/sysauth.htm
+- Surya: 
+    - [ ] Test notification with following changes
+      - [ ] Remove one cable from the router and check if notification is received
+      - [ ] Remove one cable from the ISP router end and check if notification is received
+      - [ ] Power off the ISP router and check if notification is received
     - [ ]  If link-1 is showing packet drops or link flapping or fluctuating, then mwan3 should automatically make link-2 as primary and link-1 as secondary. This should be done automatically without any manual intervention.
 
 - Keyur : 
@@ -25,14 +28,16 @@ root@OpenWrt:~#
     - [x] Provide notification endpoint to Ishan with correct payload format to send notifications to subscribers
 
 - Ishan: 
-    - [x] Fix API key issue [Resolved in Discord]
-    - [x] Double check the submitted PR on aio.sh so that the tags defined in config.json should get auto-applied to devices at the time of registration [[#3](https://github.com/scogonw/Scogo_Edge_Router/pull/3)]
-    - [x] Submit PR for device migration script from one fleet to another [[#3](https://github.com/scogonw/Scogo_Edge_Router/pull/3)]
-    - [x] Add device location and device metadata calls to aio.sh and migrate.sh scripts [[#3](https://github.com/scogonw/Scogo_Edge_Router/pull/3)]
-    - [x] Migrations as part of `aio.sh` script. [[#11](https://github.com/scogonw/Scogo_Edge_Router/pull/11)]
     - [ ] Add scogo notification API to Golan's rule engine to send notifications to subscribers in case of device is offline with retries mechanisms
     - [ ] Possiblity of submitting remote commands to device and get output back from the device
     - [ ] use `enable_dashboard` flag to enable/disable the dashboard for the device automatically
+    - [ ] Textual changes in Golain UI
+        - [ ] Scogo.Default ==> Scogo.Scogo-Store (change default to Scogo-Store)
+        - [ ] Change "Scogo-Store" fleet to "Master Warehouse"
+            - [ ] Scogo Final Convention : Scogo.Scogo-Store."Master Warehouse"
+            - [ ] Connect4Sure Final Naming convention ==> Scogo.Connect4Sure."Master Warehouse"
+            - [ ] Spectra Final Naming convention ==> Scogo.Spectra."Master Warehouse"
+    - [ ] Perform the dashboard UI changes as discuss on saturday meeting
 
 # Scogo Edge Router Configuration
 1. Copy `config_Serial_Number.json` locally and update the values as needed.
