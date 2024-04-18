@@ -904,8 +904,7 @@ EOF
 chmod +x /etc/init.d/thornol
 /etc/init.d/thornol enable
 echo "===> Starting Thornol service ..."
-/etc/init.d/thornol stop
-/etc/init.d/thornol start
+/etc/init.d/thornol restart
 }
 
 failure=1
