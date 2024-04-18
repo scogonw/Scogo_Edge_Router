@@ -71,6 +71,10 @@ then
     exit 1
 fi
 
+# Get df -h output before installation of packages
+echo "==> Getting storage utilization information before installation of packages ..."
+df -h
+
 # update the package list
 echo "==> Updating the package list ..."
 ## Todo : uncomment the below line after testing
@@ -91,6 +95,9 @@ then
         exit 1
     fi
 fi
+
+echo "==> Getting storage utilization information after installation of packages ..."
+df -h
 
 }
 
@@ -926,8 +933,7 @@ EOF
 chmod +x /etc/init.d/thornol
 /etc/init.d/thornol enable
 echo "===> Starting Thornol service ..."
-/etc/init.d/thornol stop
-/etc/init.d/thornol start
+/etc/init.d/thornol restart
 }
 
 failure=1
