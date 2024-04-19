@@ -1,3 +1,2 @@
 *.facebook.com
 *.linkedin.com
-*.youtube.com
