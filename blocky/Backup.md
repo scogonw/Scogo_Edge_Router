@@ -121,3 +121,6 @@ config rule
 	option proto 'udp'
 	option target 'ACCEPT'
 ```
+
+/etc/init.d/firewall reload
+

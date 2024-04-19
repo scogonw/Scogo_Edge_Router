@@ -42,7 +42,7 @@ nft monitor
 config redirect
         option target 'DNAT'
         option name 'Redirect port-53 traffic to Scogo DNS'
-        option src 'br-lan'
+        option src 'lan'
         option src_ip '!192.168.3.1'
         option src_dport '53'
         option dest 'lan'
