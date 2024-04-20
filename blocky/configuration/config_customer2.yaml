@@ -63,7 +63,7 @@ blocking:
   blockType: zeroIp
   blockTTL: 1m
   loading:
-    refreshPeriod: 6h
+    refreshPeriod: 10m
     downloads:
       timeout: 60s
       attempts: 5

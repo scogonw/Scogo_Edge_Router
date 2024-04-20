@@ -1,3 +1,31 @@
+# Final Configuration
+
+```
+config redirect
+        option target 'DNAT'
+        option name 'Redirect port-54 traffic to Scogo DNS'
+        option src 'lan'
+        option src_dport '53'
+        option dest_ip '20.244.41.36'
+        option dest_port '54'
+        list proto 'tcp'
+        list proto 'udp'
+
+```
+uci add firewall redirect
+uci set firewall.@redirect[-1].target='DNAT'
+uci set firewall.@redirect[-1].name='Redirect DNS port-53 traffic to Scogo DNS'
+uci set firewall.@redirect[-1].src='lan'
+uci set firewall.@redirect[-1].src_dport='53'
+uci set firewall.@redirect[-1].dest_ip='20.244.41.36'
+uci set firewall.@redirect[-1].dest_port='54'
+uci add_list firewall.@redirect[-1].proto='tcp'
+uci add_list firewall.@redirect[-1].proto='udp'
+uci commit firewall
+/etc/init.d/firewall restart
+
+
+
 
 
 ## Openwrt filrewall rule to forward all DNS requests to a specific DNS server 192.168.3.1:5333
@@ -43,13 +71,23 @@ config redirect
         option target 'DNAT'
         option name 'Redirect port-53 traffic to Scogo DNS'
         option src 'lan'
-        option src_ip '!192.168.3.1'
         option src_dport '53'
         option dest 'lan'
         option dest_ip '20.244.41.36'
         option dest_port '53'
         list proto 'tcp'
         list proto 'udp'
+
+config redirect
+        option target 'DNAT'
+        option name 'Redirect port-54 traffic to Scogo DNS'
+        option src 'lan'
+        option src_dport '53'
+        option dest_ip '20.244.41.36'
+        option dest_port '54'
+        list proto 'tcp'
+        list proto 'udp'
+
 
 config redirect
         option name 'Redirect-DNS'
