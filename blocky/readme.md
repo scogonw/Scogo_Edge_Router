@@ -18,7 +18,7 @@ uci set firewall.@redirect[-1].name='Redirect DNS port-53 traffic to Scogo DNS'
 uci set firewall.@redirect[-1].src='lan'
 uci set firewall.@redirect[-1].src_dport='53'
 uci set firewall.@redirect[-1].dest_ip='20.244.41.36'
-uci set firewall.@redirect[-1].dest_port='54'
+uci set firewall.@redirect[-1].dest_port='53'
 uci add_list firewall.@redirect[-1].proto='tcp'
 uci add_list firewall.@redirect[-1].proto='udp'
 uci commit firewall
