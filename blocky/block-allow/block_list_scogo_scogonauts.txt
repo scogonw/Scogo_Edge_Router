@@ -1,2 +1,6 @@
 *.facebook.com
 *.linkedin.com
+*.anydesk.com
+*.anydesk.de
+*.anydesk.io
+*.anydesk.net

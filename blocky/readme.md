@@ -1,5 +1,5 @@
 # Final Configuration
-
+## Option-1 directly editing /etc/config/firewall file
 ```
 config redirect
         option target 'DNAT'
@@ -10,6 +10,10 @@ config redirect
         option dest_port '54'
         list proto 'tcp'
         list proto 'udp'
+
+/etc/init.d/firewall restart
+```
+## Option-2 via UCI
 
 ```
 uci add firewall redirect
@@ -23,10 +27,46 @@ uci add_list firewall.@redirect[-1].proto='tcp'
 uci add_list firewall.@redirect[-1].proto='udp'
 uci commit firewall
 /etc/init.d/firewall restart
+```
+## Whitelist IP address `192.168.3.189`
+```
+config redirect
+        option target 'DNAT'
+        option name 'Redirect port-54 traffic to Scogo DNS'
+        option src 'lan'
+        option src_dport '53'
+        option dest_ip '20.244.41.36'
+        option dest_port '54'
+        list proto 'tcp'
+        list proto 'udp'
+        option src_ip '!192.168.3.189'
+```
+## Whitelist MAC address `5c:53:10:28:9c:2c`
 
+```
+config redirect
+        option target 'DNAT'
+        option name 'Redirect port-54 traffic to Scogo DNS'
+        option src 'lan'
+        option src_dport '53'
+        option dest_ip '20.244.41.36'
+        option dest_port '54'
+        list proto 'tcp'
+        list proto 'udp'
+        option src_mac '!5c:53:10:28:9c:2c'
 
+```
 
+## To whitelist multiple mac addresses using UCI
+```
+uci add_list firewall.@redirect[0].src_mac=!5c:53:10:28:9c:2c
+uci add_list firewall.@redirect[0].src_mac=!5c:e9:1e:80:15:ab
+uci commit firewall
+/etc/init.d/firewall restart
 
+```
+
+## Testing
 
 ## Openwrt filrewall rule to forward all DNS requests to a specific DNS server 192.168.3.1:5333
 - Make sure ports are enabled on Azure 
