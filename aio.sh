@@ -945,7 +945,7 @@ if [ ! -f /etc/init.d/thornol ]; then
 else 
     echo "===> Starting Thornol service ..."
     /etc/init.d/thornol stop
-    /etc/init.d/thornol start
+    /etc/init.d/thornol restart
     failure=0
 fi
 }
