@@ -1,0 +1,3 @@
+*.youtube.com
+*.amazon.com
+*.amazon.in

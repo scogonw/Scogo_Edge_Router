@@ -1,0 +1,78 @@
+## DNS server IP 20.244.41.36
+upstreams:
+  groups:
+    default:
+      # unencrypted DNS upstreams
+      - 1.1.1.1
+      # DNS over HTTPS upstreams
+      - https://dns.google/dns-query
+      - https://dns.nextdns.io
+      # DNS over TLS upstreams
+      - tcp-tls:dns.quad9.net
+  # blocky will pick the 2 fastest upstreams but you can also use the `strict` strategy
+  strategy: parallel_best
+  timeout: 2s
+
+# check if upstreams are working
+startVerifyUpstream: true
+
+# there's no IPv6 connectivity inside Docker networks
+connectIPVersion: v4
+
+# useful for self hosted services
+customDNS:
+  customTTL: 1h
+  mapping:
+    scogo.ser.local: 192.168.3.1
+
+blocking:
+  blackLists:
+    ads:
+      - https://s3.amazonaws.com/lists.disconnect.me/simple_ad.txt
+      - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+      - http://sysctl.org/cameleon/hosts
+      - https://s3.amazonaws.com/lists.disconnect.me/simple_tracking.txt
+      - https://raw.githubusercontent.com/hagezi/dns-blocklists/main/domains/light.txt
+      - https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/blocky/block-allow/block_customer1.txt
+      - |
+        # inline definition with YAML literal block scalar style
+        #*.facebook.com
+    fakenews:
+      - https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews-only/hosts
+    gambling:
+      - https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/gambling-only/hosts
+
+  whiteLists:
+    ads:
+      - whitelist.txt
+      - https://raw.githubusercontent.com/scogonw/Scogo_Edge_Router/prod/blocky/block-allow/allow_customer1.txt
+      - |
+        # inline definition with YAML literal block scalar style
+        # hosts format
+        whitelistdomain.com
+        # this is a regex
+        /^banners?[_.-]/
+  # definition: which groups should be applied for which client
+
+  clientGroupsBlock:
+    default:
+      - ads
+      - fakenews
+      - gambling
+
+  blockType: zeroIp
+  blockTTL: 1m
+  loading:
+    refreshPeriod: 10m
+    downloads:
+      timeout: 60s
+      attempts: 5
+      cooldown: 10s
+    concurrency: 16
+    # start answering queries immediately after start
+    strategy: fast
+    maxErrorsPerSource: 5
+
+ports:
+  dns: 53
+  http: 4000
