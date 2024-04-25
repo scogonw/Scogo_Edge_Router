@@ -71,13 +71,40 @@ SITE_END_CUSTOMER_SPOC_EMAIL_ADDRESS=$(uci get scogo.@site[0].end_customer_spoc_
 # ACTION=$1
 # INTERFACE=$2
 
+LINK=""
+LINK_STATUS=""
+if [ "${ACTION}" = "ifup" ] ; then
+    if [ "${INTERFACE}" == "wan1" ] then 
+        LINK="Primary Link"
+        LINK_STATUS="Primary Link Up"
+    fi
+    
+    if[ "${INTERFACE}" == "wan2" ] ; then
+        LINK="Secondary Link"
+        LINK_STATUS="Secondary Link Up"
+    fi
+fi
+if [ "${ACTION}" = "ifdown" ] ; then
+    if [ "${INTERFACE}" == "wan1" ] then 
+        LINK="Primary Link"
+        LINK_STATUS="Primary Link Down"
+    fi
+    
+    if[ "${INTERFACE}" == "wan2" ] ; then
+        LINK="Secondary Link"
+        LINK_STATUS="Secondary Link Down"
+    fi
+fi
+
 PAYLOAD=$(cat <<-END
 {
     "DEVICE_DETAILS": {
         "DEVICE_HOSTNAME": "$(echo $DEVICE_HOSTNAME)",
         "DEVICE_MAKE_MODEL": "$(echo $DEVICE_MAKE_MODEL)",
         "DEVICE_ASSET_ID": "$(echo $DEVICE_ASSET_ID)",
-        "NETWORK_INTERFACE_NAME": "$(echo $INTERFACE)"
+        "NETWORK_INTERFACE_NAME": "$(echo $INTERFACE)",
+        "LINK_STATUS": "$(echo $LINK_STATUS)",
+        "LINK": "$(echo $LINK)"
     },
     "SITE_DETAILS": {
         "CUSTOMER_NAME": "$(echo $SITE_CUSTOMER_NAME)",
