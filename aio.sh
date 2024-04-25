@@ -605,7 +605,7 @@ rutty_setup() {
 create_initd_service_rutty() {
 # Create a init.d service for the binaries
 echo "===> Setting up /etc/init.d/rutty service file for Rutty ..."
-hostname=$(uci get scogo.@device[0].hostname | tr '[A-Z]' '[a-z]')
+hostname=$(uci get scogo.@device[0].hostname | tr '[a-z]' '[A-Z]')
 
 cat <<EOF > /etc/init.d/rutty
 #!/bin/sh /etc/rc.common
