@@ -40,7 +40,7 @@ LINK_UP_NOTIFICATION_WORKFLOW=$(uci get scogo.@notification[0].link_up_notificat
 DEVICE_OFFLINE_NOTIFICATION_WORKFLOW=$(uci get scogo.@notification[0].device_offline_notification_workflow)
 EMAIL_FROM=$(uci get scogo.@notification[0].email_from)
 
-DEVICE_HOSTNAME=$(uci get scogo.@device[0].hostname | tr '[A-Z]' '[a-z]')
+DEVICE_HOSTNAME=$(uci get scogo.@device[0].hostname | tr '[a-z]' '[A-Z]' )
 DEVICE_MAKE_MODEL=$(uci get scogo.@device[0].make_model)
 DEVICE_ASSET_ID=$(uci get scogo.@device[0].serial_number)
 
