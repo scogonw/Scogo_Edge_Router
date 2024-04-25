@@ -508,7 +508,7 @@ rathole_setup() {
     create_initd_service_rathole() {
     rathole_server_endpoint=$(uci get scogo.@infrastructure[0].rathole_server_endpoint | tr '[A-Z]' '[a-z]')
     rathole_default_token=$(uci get scogo.@infrastructure[0].rathole_default_token)
-    serial_number=$(uci get scogo.@device[0].serial_number | tr '[A-Z]' '[a-z]')
+    serial_number=$(uci get scogo.@device[0].serial_number | tr '[a-z]' '[A-Z]')
     echo "===> Creating /etc/config/rathole-client.toml file ..."
 cat <<EOF > /etc/config/rathole-client.toml
 [client]
@@ -688,7 +688,7 @@ mkdir -p /usr/lib/thornol/certs
 
 # Seting variables
 api_key=$(uci get scogo.@infrastructure[0].golain_api_key)
-device_name=$(uci get scogo.@device[0].serial_number | tr '[A-Z]' '[a-z]')
+device_name=$(uci get scogo.@device[0].serial_number | tr '[a-z]' '[A-Z]')
 project_id=$(uci get scogo.@infrastructure[0].golain_project_id)
 org_id=$(uci get scogo.@infrastructure[0].golain_org_id)
 fleet_id=$(uci get scogo.@infrastructure[0].golain_fleet_id)
@@ -971,7 +971,7 @@ upload_log_file() {
     ## Upload the log file to scogo asset inventory against the device serial number
     echo "===> Uploading log file to Scogo Asset Inventory ..."
     asset_file_upload_endpoint="https://ydzkg5tj55.execute-api.ap-south-1.amazonaws.com/prod/api/webhooks/assets/config"
-    serial_number=$(uci get scogo.@device[0].serial_number | tr '[A-Z]' '[a-z]')
+    serial_number=$(uci get scogo.@device[0].serial_number | tr '[a-z]' '[A-Z]')
     #logfile="lastlog"
     # convert the log file to base64
     base64_logfile=$(base64 -w 0 "/var/log/$logfile")
@@ -1002,7 +1002,7 @@ upload_config_file() {
     ## Upload the config.json file to scogo asset inventory against the device serial number
     echo "===> Uploading config.json file to Scogo Asset Inventory ..."
     asset_file_upload_endpoint="https://ydzkg5tj55.execute-api.ap-south-1.amazonaws.com/prod/api/webhooks/assets/config"
-    serial_number=$(uci get scogo.@device[0].serial_number | tr '[A-Z]' '[a-z]')
+    serial_number=$(uci get scogo.@device[0].serial_number | tr '[a-z]' '[A-Z]')
     #logfile="lastlog"
     # convert the config.json file to base64
     base64_configfile=$(base64 -w 0 "/root/config.json")
