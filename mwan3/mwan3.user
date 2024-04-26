@@ -81,9 +81,7 @@ if [ "${ACTION}" = "ifup" ] ; then
         ISP_NAME="${ISP1_NAME}"
         LINK="Primary Link"
         LINK_STATUS="Primary Link Up"
-    fi
-    
-    if[ "${INTERFACE}" == "wan2" ] ; then
+    else 
         ISP_NAME="${ISP2_NAME}"
         LINK="Secondary Link"
         LINK_STATUS="Secondary Link Up"
@@ -94,9 +92,7 @@ if [ "${ACTION}" = "ifdown" ] ; then
         ISP_NAME="${ISP1_NAME}"
         LINK="Primary Link"
         LINK_STATUS="Primary Link Down"
-    fi
-    
-    if[ "${INTERFACE}" == "wan2" ] ; then
+    else
         ISP_NAME="${ISP2_NAME}"
         LINK="Secondary Link"
         LINK_STATUS="Secondary Link Down"
