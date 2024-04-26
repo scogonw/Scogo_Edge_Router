@@ -43,8 +43,8 @@ EMAIL_FROM=$(uci get scogo.@notification[0].email_from)
 DEVICE_HOSTNAME=$(uci get scogo.@device[0].hostname | tr '[a-z]' '[A-Z]' )
 DEVICE_MAKE_MODEL=$(uci get scogo.@device[0].make_model)
 DEVICE_ASSET_ID=$(uci get scogo.@device[0].serial_number)
-ISP1_NAME=$(uci get scogo.@link1[0].isp_name)
-ISP2_NAME=$(uci get scogo.@link2[0].isp_name)
+# ISP1_NAME=$(uci get scogo.@link1[0].isp_name)
+# ISP2_NAME=$(uci get scogo.@link2[0].isp_name)
 
 SITE_CUSTOMER_NAME=$(uci get scogo.@site[0].customer_name)
 SITE_DEVICE_INSTALLATION_ADDRESS=$(uci get scogo.@site[0].device_installation_address)
@@ -76,28 +76,28 @@ SITE_END_CUSTOMER_SPOC_EMAIL_ADDRESS=$(uci get scogo.@site[0].end_customer_spoc_
 LINK=""
 LINK_STATUS=""
 ISP_NAME=""
-if [ "${ACTION}" = "ifup" ] ; then
-    if [ "${INTERFACE}" == "wan1" ] then 
-        ISP_NAME="${ISP1_NAME}"
-        LINK="Primary Link"
-        LINK_STATUS="Primary Link Up"
-    else 
-        ISP_NAME="${ISP2_NAME}"
-        LINK="Secondary Link"
-        LINK_STATUS="Secondary Link Up"
-    fi
-fi
-if [ "${ACTION}" = "ifdown" ] ; then
-    if [ "${INTERFACE}" == "wan1" ] then 
-        ISP_NAME="${ISP1_NAME}"
-        LINK="Primary Link"
-        LINK_STATUS="Primary Link Down"
-    else
-        ISP_NAME="${ISP2_NAME}"
-        LINK="Secondary Link"
-        LINK_STATUS="Secondary Link Down"
-    fi
-fi
+# if [ "${ACTION}" = "ifup" ] ; then
+#     if [ "${INTERFACE}" == "wan1" ] then 
+#         ISP_NAME="${ISP1_NAME}"
+#         LINK="Primary Link"
+#         LINK_STATUS="Primary Link Up"
+#     else 
+#         ISP_NAME="${ISP2_NAME}"
+#         LINK="Secondary Link"
+#         LINK_STATUS="Secondary Link Up"
+#     fi
+# fi
+# if [ "${ACTION}" = "ifdown" ] ; then
+#     if [ "${INTERFACE}" == "wan1" ] then 
+#         ISP_NAME="${ISP1_NAME}"
+#         LINK="Primary Link"
+#         LINK_STATUS="Primary Link Down"
+#     else
+#         ISP_NAME="${ISP2_NAME}"
+#         LINK="Secondary Link"
+#         LINK_STATUS="Secondary Link Down"
+#     fi
+# fi
 
 PAYLOAD=$(cat <<-END
 {
