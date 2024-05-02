@@ -220,8 +220,8 @@ unset IFS
 unset key
 uci commit scogo
 
-configure_link1=$(jsonfilter -i config.json -e @.device.configure_link1)
-if [ "$configure_link1" == "True" ]; then
+configure_link1=$(jsonfilter -i config.json -e @.link1.configure_link1 | tr '[A-Z]' '[a-z]')
+if [ "$configure_link1" == "true" ]; then
     echo "===> Setting up UCI for Link1 configuration details ..."
     # Read all keys without quotes or commas using jq
     link1_keys=$(jq -r '.link1 | keys_unsorted | @csv' config.json | sed 's/"//g')
@@ -241,8 +241,8 @@ if [ "$configure_link1" == "True" ]; then
     uci commit scogo
 fi
 
-configure_link2=$(jsonfilter -i config.json -e @.device.configure_link2)
-if [ "$configure_link2" == "True" ]; then
+configure_link2=$(jsonfilter -i config.json -e @.link2.configure_link2 | tr '[A-Z]' '[a-z]')
+if [ "$configure_link2" == "true" ]; then
     echo "===> Setting up UCI for Link2 configuration details ..."
     # Read all keys without quotes or commas using jq
     link2_keys=$(jq -r '.link2 | keys_unsorted | @csv' config.json | sed 's/"//g')
