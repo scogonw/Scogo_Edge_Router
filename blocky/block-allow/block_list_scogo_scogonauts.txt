@@ -3,3 +3,5 @@
 *.anydesk.de
 *.anydesk.io
 *.anydesk.net
+*.netflix.com
+*.hotstar.com
