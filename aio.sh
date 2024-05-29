@@ -472,10 +472,13 @@ mwan3_and_notification_setup() {
     fi
 
     echo "===> Adding Subscribers to Topic ..."
-    response_code=$(curl -s -o /dev/null -w "%{http_code}" --insecure --location $notification_service_endpoint/v1/topics/$notification_topic/subscribers \
+    response_code=$(curl -s -o /dev/null -w "%{http_code}" --insecure --location $notification_service_endpoint/v1/topics/subscribers \
     --header "Authorization: $notification_service_auth_key" \
     --header 'Content-Type: application/json' \
     --data '{
+        "topics": [
+            "'"$notification_topic"'"
+        ],
         "subscribers": [
             "10001",
             "10002",
